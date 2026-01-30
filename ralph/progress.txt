@@ -5,5 +5,21 @@
 - Use uv/uvx for package management (never pip or poetry)
 - Use fastmcp >= 0.4.0 for MCP server
 - Use "returns" module for Rust-style Result/Option patterns
+- JSON schemas follow JSON Schema 2020-12 specification
+- All schemas include $schema, $id, title, description, type, required, and properties fields
 
+---
+
+## 2026-01-30 - US-001
+- Implemented canonical requirement record JSON schema for reqif-mcp/1
+- Files changed:
+  - Created schemas/requirement-record.schema.json
+- **Learnings for future iterations:**
+  - Schema directory established at `schemas/` for all data contract schemas
+  - Requirement record schema defines the core data model that all other components depend on
+  - Schema includes all required fields: uid, key, subtypes[], status enum, policy_baseline object, rubrics[], text, attrs (flexible)
+  - Status enum strictly limited to: active, obsolete, draft
+  - Policy baseline requires id, version, and hash for traceability
+  - Rubrics require engine, bundle, package, rule fields for OPA evaluation
+  - Attrs object is flexible with additionalProperties:true to allow domain-specific extensions
 ---
