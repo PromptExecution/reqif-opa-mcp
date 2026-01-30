@@ -374,6 +374,70 @@ def create_error_response(error: Exception) -> dict[str, Any]:
     }
 
 
+@mcp.resource("reqif://baseline/{baseline_id}")
+def get_baseline_metadata(baseline_id: str) -> dict[str, Any]:
+    """Get baseline metadata by handle.
+
+    Args:
+        baseline_id: Baseline handle (from reqif.parse)
+
+    Returns:
+        Baseline metadata JSON with id, version, hash, requirement_count
+
+    Raises:
+        ValueError: If baseline not found (404 error)
+    """
+    # Retrieve baseline from store
+    baseline_result = get_baseline_by_handle(baseline_id)
+    if isinstance(baseline_result, Failure):
+        raise ValueError(f"Baseline not found: {baseline_id}")
+
+    requirements = baseline_result.unwrap()
+
+    # Extract policy baseline metadata from first requirement (all have same baseline)
+    if requirements:
+        policy_baseline = requirements[0].get("policy_baseline", {})
+        baseline_id_value = policy_baseline.get("id", baseline_id)
+        baseline_version = policy_baseline.get("version", "unknown")
+        baseline_hash = policy_baseline.get("hash", "")
+    else:
+        baseline_id_value = baseline_id
+        baseline_version = "unknown"
+        baseline_hash = ""
+
+    # Return baseline metadata
+    return {
+        "id": baseline_id_value,
+        "version": baseline_version,
+        "hash": baseline_hash,
+        "requirement_count": len(requirements),
+        "handle": baseline_id,
+    }
+
+
+@mcp.resource("reqif://requirement/{requirement_uid}")
+def get_requirement_by_uid(requirement_uid: str) -> dict[str, Any]:
+    """Get single requirement record by UID.
+
+    Args:
+        requirement_uid: Requirement unique identifier
+
+    Returns:
+        Requirement record JSON
+
+    Raises:
+        ValueError: If requirement not found (404 error)
+    """
+    # Search all baselines for the requirement UID
+    for handle, requirements in _baseline_store.items():
+        for req in requirements:
+            if req.get("uid") == requirement_uid:
+                return req
+
+    # Requirement not found in any baseline
+    raise ValueError(f"Requirement not found: {requirement_uid}")
+
+
 def run_server(transport: str = "stdio") -> None:
     """Start the FastMCP server with specified transport.
 
