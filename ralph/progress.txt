@@ -167,3 +167,20 @@
   - Quality checks: mypy --strict and ruff check both pass
 ---
 
+## 2026-01-30 - US-009
+- Implemented reqif.query tool in FastMCP server for querying requirements with filtering and pagination
+- Files changed:
+  - Modified reqif_mcp/server.py (added reqif_query tool function)
+- **Learnings for future iterations:**
+  - FastMCP tool pattern: @mcp.tool() decorator with descriptive function name
+  - Query tool signature: reqif_query(handle, subtypes=None, status=None, limit=None, offset=0) -> dict
+  - Handle is required parameter (baseline identifier from reqif.parse)
+  - Filtering pattern: retrieve baseline, apply filters sequentially, then paginate
+  - Subtypes filter uses AND logic: all(subtype in req.get("subtypes", []) for subtype in subtypes)
+  - Status filter validates against enum: "active", "obsolete", "draft"
+  - Pagination: slice filtered_requirements[offset:offset+limit] or [offset:] if limit is None
+  - Return structure: {requirements[], total_count, returned_count, offset}
+  - Empty result set returns empty array (not error) - this is intentional design
+  - Type hints: use list[str] | None for optional list parameters (Python 3.10+)
+  - Quality checks: mypy --strict and ruff check both pass
+---
