@@ -1,12 +1,16 @@
 ## Codebase Patterns
-- This is a greenfield project - no implementation code exists yet
+- Project structure: reqif_mcp/ package for all implementation code
 - Use ruff for linting (never black)
 - Use PEP 484 type hints for all Python code
 - Use uv/uvx for package management (never pip or poetry)
 - Use fastmcp >= 0.4.0 for MCP server
 - Use "returns" module for Rust-style Result/Option patterns
+  - All functions that can fail return Result[SuccessType, Exception]
+  - Use Success(value) and Failure(error) for returns
+  - Match statements need explicit variable assignment for mypy exhaustiveness
 - JSON schemas follow JSON Schema 2020-12 specification
 - All schemas include $schema, $id, title, description, type, required, and properties fields
+- Quality checks: `uv run mypy --strict` and `uv run ruff check` must pass
 
 ---
 
@@ -22,4 +26,29 @@
   - Policy baseline requires id, version, and hash for traceability
   - Rubrics require engine, bundle, package, rule fields for OPA evaluation
   - Attrs object is flexible with additionalProperties:true to allow domain-specific extensions
+---
+
+## 2026-01-30 - US-002
+- Implemented requirement record validation function using jsonschema
+- Files changed:
+  - Created reqif_mcp/__init__.py (package initialization)
+  - Created reqif_mcp/validation.py (validation module with 3 functions)
+  - Created pyproject.toml (project dependencies with uv)
+  - Created .python-version (Python 3.10.16)
+  - Created uv.lock (dependency lockfile)
+- **Learnings for future iterations:**
+  - Project structure created: reqif_mcp/ package with __init__.py
+  - Used uv for dependency management: `uv init`, `uv add`, `uv add --dev`
+  - Validation uses jsonschema Draft202012Validator for JSON Schema 2020-12 compliance
+  - Validation functions return Result[ValidationResult, Exception] using returns module
+  - ValidationResult TypedDict structure: {valid: bool, errors: list[ValidationErrorDetail]}
+  - ValidationErrorDetail TypedDict structure: {field: str, message: str, value: Any}
+  - Three validation functions created:
+    1. load_schema(path) -> loads schema from file
+    2. validate_requirement_record(record, schema) -> validates record against schema
+    3. validate_requirement_record_from_schema_file(record, path) -> convenience function
+  - All functions use Rust-style error handling with returns module (Success/Failure)
+  - Type checking: mypy with --strict flag passes (added types-jsonschema stub)
+  - Linting: ruff check passes (removed unused import)
+  - Match statements need explicit variable assignment before match for mypy exhaustiveness checking
 ---
