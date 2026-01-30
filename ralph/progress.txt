@@ -95,3 +95,21 @@
   - Quality checks: mypy --strict and ruff check both pass
 ---
 
+## 2026-01-30 - US-005
+- Implemented requirement record integrity validation function
+- Files changed:
+  - Modified reqif_mcp/validation.py (added validate_requirement_integrity function, IntegrityValidationResult and IntegrityErrorDetail TypedDicts)
+  - Modified reqif_mcp/__init__.py (exported new validation functions and types)
+- **Learnings for future iterations:**
+  - Integrity validation extends schema validation with referential checks
+  - Function signature: validate_requirement_integrity(requirements: list[dict], mode: str) -> Result[IntegrityValidationResult, Exception]
+  - Two validation modes: "basic" (structure only) and "strict" (adds referential integrity checks)
+  - IntegrityValidationResult includes: valid (bool), errors (list), warnings (list)
+  - UID uniqueness check uses dict to track seen UIDs and their indices
+  - Policy baseline validation checks: id, version, hash fields all present and non-empty
+  - Rubric validation checks: engine, bundle, package, rule fields all present and non-empty
+  - Strict mode adds check for multiple policy baselines in same requirement set (warning, not error)
+  - All errors include record_uid for traceability (or None for set-level errors)
+  - Quality checks: mypy --strict and ruff check both pass
+---
+
