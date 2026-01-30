@@ -746,3 +746,41 @@
   - Quality checks: mypy --strict and ruff check both pass (no Python code, documentation only)
 ---
 
+## 2026-01-31 - US-036
+- Implemented sample GitHub Actions CI pipeline configuration for compliance gate
+- Files changed:
+  - Created .github/workflows/compliance-gate.yml (comprehensive CI workflow - 405 lines)
+  - Modified .gitignore (added evidence_store/ to ignore runtime artifacts)
+  - Modified ralph/prd.json (marked US-036 as passes: true)
+- **Learnings for future iterations:**
+  - GitHub Actions workflow demonstrates complete compliance gate integration
+  - Workflow includes all acceptance criteria:
+    1. Start FastMCP server in background using uv run with HTTP transport on port 8000
+    2. Query requirements by baseline and subtypes using MCP Python API (simplified for example)
+    3. Run stub agent to produce synthetic facts for CYBER subtype
+    4. Evaluate each requirement with OPA using opa-bundles/example
+    5. Generate SARIF reports and save to evidence_store/sarif/
+    6. Merge multiple SARIF files into single merged.sarif for GitHub upload
+    7. Upload SARIF to GitHub Security tab using github/codeql-action/upload-sarif
+    8. Write verification events to evidence_store/events/verifications.jsonl
+    9. Fail pipeline on high/critical severity failures via sys.exit(1)
+    10. Upload all evidence artifacts with 90-day retention
+    11. Comment on PR with compliance results summary table
+  - Workflow structure: checkout → setup Python/uv/OPA → start server → parse → query → agent → evaluate → SARIF → upload → cleanup
+  - FastMCP server runs in background: `python -m reqif_mcp --http &` then save PID for cleanup
+  - Server health check: curl -f http://127.0.0.1:8000/health to verify server started
+  - Python API usage pattern: import functions directly from reqif_mcp modules and call in uv run python -c "..." scripts
+  - Base64 encoding for ReqIF XML: use base64 -w 0 (no line wrapping) for proper base64 string
+  - SARIF merging: collect all runs[] arrays from individual SARIF files into single merged SARIF
+  - GitHub SARIF upload requires proper permissions: security-events: write, contents: read
+  - Compliance gate decision: fail on status=fail AND severity in [high, critical]
+  - Artifact upload pattern: uses actions/upload-artifact@v4 with path array and retention-days
+  - PR comments use actions/github-script@v7 with fs module to read JSON results
+  - Cleanup pattern: kill background server using saved PID in finally/always block
+  - Evidence store directory excluded from Git: added to .gitignore since it contains runtime artifacts
+  - Evidence store contains: decision_logs/, events/, sarif/ directories populated by evaluations
+  - Production deployment: workflow uses real OPA binary, actual baselines, production agents
+  - Example uses stub agent and sample baseline from tests/fixtures/ for demonstration
+  - Quality checks: mypy --strict and ruff check both pass
+---
+
