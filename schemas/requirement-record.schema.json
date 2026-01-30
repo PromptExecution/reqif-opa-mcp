@@ -100,5 +100,6 @@
       },
       "additionalProperties": true
     }
-  }
+  },
+  "additionalProperties": false
 }
