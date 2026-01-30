@@ -132,3 +132,23 @@
   - Server scaffold is ready for tool implementation in US-007 and beyond
   - Quality checks: mypy --strict and ruff check both pass
 ---
+
+## 2026-01-30 - US-007
+- Implemented reqif.parse tool in FastMCP server
+- Files changed:
+  - Modified reqif_mcp/server.py (added reqif_parse tool function)
+- **Learnings for future iterations:**
+  - FastMCP tool registration uses @mcp.tool() decorator for automatic registration
+  - Tool function signature: reqif_parse(xml_b64, policy_baseline_id="default", policy_baseline_version="1.0.0") -> dict
+  - Base64 decoding pattern: base64.b64decode(xml_b64).decode("utf-8")
+  - Error handling pattern: catch decode errors and return create_error_response(ValueError(...))
+  - Parser function name is parse_reqif_xml (not parse_reqif) from reqif_parser module
+  - Normalizer function signature: normalize_reqif(reqif_data, policy_baseline_id, policy_baseline_version)
+  - Handle generation: use ULID library to generate unique sortable identifiers: str(ULID())
+  - Tool returns success dict with: handle (str), requirement_count (int), policy_baseline (dict)
+  - Tool returns error dict via create_error_response on parsing or normalization failure
+  - Baseline storage: use store_baseline(handle, requirements) to save in-memory
+  - All Result types from returns module checked with isinstance(result, Failure) pattern
+  - Unwrap Success/Failure values with .unwrap() and .failure() methods
+  - Quality checks: mypy --strict and ruff check both pass
+---
