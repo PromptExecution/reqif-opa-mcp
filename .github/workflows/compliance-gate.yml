@@ -1,0 +1,402 @@
+name: Compliance Gate
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  compliance-gate:
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Required for uploading SARIF to GitHub Security
+      security-events: write
+      # Required for checking out code
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: 'latest'
+
+      - name: Install OPA
+        run: |
+          curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64
+          chmod +x opa
+          sudo mv opa /usr/local/bin/
+          opa version
+
+      - name: Install project dependencies
+        run: |
+          uv sync
+
+      - name: Start FastMCP server in background
+        run: |
+          uv run python -m reqif_mcp --http --host 127.0.0.1 --port 8000 &
+          echo $! > mcp_server.pid
+          sleep 5
+
+          # Verify server is running
+          curl -f http://127.0.0.1:8000/health || (echo "Server failed to start" && cat mcp_server.log && exit 1)
+
+      - name: Parse ReqIF baseline
+        id: parse_baseline
+        run: |
+          # For this example, we're using a sample baseline from tests
+          # In a real CI pipeline, this would be your actual requirements baseline
+          REQIF_B64=$(base64 -w 0 tests/fixtures/sample_baseline.reqif)
+
+          # Call MCP tool to parse ReqIF (via FastMCP HTTP endpoint)
+          # This is a simplified example - in production you'd use proper MCP client
+          # For now, we'll use the Python API directly
+          HANDLE=$(uv run python -c "
+          from reqif_mcp.server import parse_reqif_xml, store_baseline, normalize_reqif
+          from reqif_mcp.reqif_parser import parse_reqif_xml as parse_xml
+          import base64
+          import json
+          import sys
+          from returns.result import Failure
+          from ulid import ULID
+
+          xml_b64 = '''$REQIF_B64'''
+          try:
+              xml_str = base64.b64decode(xml_b64).decode('utf-8')
+              parse_result = parse_xml(xml_str)
+              if isinstance(parse_result, Failure):
+                  print(f'Parse error: {parse_result.failure()}', file=sys.stderr)
+                  sys.exit(1)
+
+              reqif_data = parse_result.unwrap()
+              norm_result = normalize_reqif(reqif_data, 'CI-BASELINE-2024', '1.0.0')
+              if isinstance(norm_result, Failure):
+                  print(f'Normalization error: {norm_result.failure()}', file=sys.stderr)
+                  sys.exit(1)
+
+              requirements = norm_result.unwrap()
+              handle = str(ULID())
+              store_baseline(handle, requirements)
+              print(handle)
+          except Exception as e:
+              print(f'Error: {e}', file=sys.stderr)
+              sys.exit(1)
+          ")
+
+          echo "BASELINE_HANDLE=$HANDLE" >> $GITHUB_OUTPUT
+          echo "Baseline handle: $HANDLE"
+
+      - name: Query requirements by subtype
+        id: query_requirements
+        env:
+          BASELINE_HANDLE: ${{ steps.parse_baseline.outputs.BASELINE_HANDLE }}
+        run: |
+          # Query CYBER requirements from the baseline
+          uv run python -c "
+          from reqif_mcp.server import query_requirements, get_baseline_by_handle
+          from returns.result import Failure
+          import json
+          import sys
+          import os
+
+          handle = os.environ['BASELINE_HANDLE']
+          result = get_baseline_by_handle(handle)
+          if isinstance(result, Failure):
+              print(f'Baseline not found: {result.failure()}', file=sys.stderr)
+              sys.exit(1)
+
+          requirements = result.unwrap()
+          filtered = query_requirements(requirements, subtypes=['CYBER'])
+
+          # Save requirements to file for next step
+          with open('requirements.json', 'w') as f:
+              json.dump(filtered['requirements'], f, indent=2)
+
+          print(f\"Found {filtered['returned_count']} CYBER requirements\")
+          "
+
+      - name: Run agent to produce facts
+        id: run_agent
+        run: |
+          # Run stub agent for CYBER subtype
+          # In production, this would be your actual agent analyzing artifacts
+          uv run python agents/stub_agent.py --subtype CYBER > agent_facts.json
+
+          echo "Agent facts generated"
+          cat agent_facts.json
+
+      - name: Evaluate requirements with OPA
+        id: evaluate
+        env:
+          BASELINE_HANDLE: ${{ steps.parse_baseline.outputs.BASELINE_HANDLE }}
+        run: |
+          # For each requirement, evaluate with OPA
+          uv run python -c "
+          from reqif_mcp.opa_evaluator import evaluate_requirement
+          from reqif_mcp.sarif_producer import generate_sarif_report, write_sarif_file
+          from reqif_mcp.server import get_baseline_by_handle
+          from returns.result import Failure
+          import json
+          import sys
+          import os
+          from pathlib import Path
+          from ulid import ULID
+
+          handle = os.environ['BASELINE_HANDLE']
+          baseline_result = get_baseline_by_handle(handle)
+          if isinstance(baseline_result, Failure):
+              print(f'Baseline not found: {baseline_result.failure()}', file=sys.stderr)
+              sys.exit(1)
+
+          requirements = baseline_result.unwrap()
+
+          # Load agent facts
+          with open('agent_facts.json') as f:
+              facts = json.load(f)
+
+          # Filter to CYBER requirements
+          cyber_reqs = [r for r in requirements if 'CYBER' in r.get('subtypes', [])]
+
+          # Evaluate each requirement
+          gate_failed = False
+          all_results = []
+
+          for req in cyber_reqs:
+              evaluation_id = str(ULID())
+
+              # Evaluate with OPA
+              eval_result = evaluate_requirement(
+                  requirement=req,
+                  facts=facts,
+                  bundle_path='opa-bundles/example',
+                  context={'target': facts['target']},
+                  evaluation_id=evaluation_id,
+                  enable_decision_logging=True
+              )
+
+              if isinstance(eval_result, Failure):
+                  print(f'Evaluation failed for {req[\"uid\"]}: {eval_result.failure()}', file=sys.stderr)
+                  continue
+
+              decision = eval_result.unwrap()
+
+              # Generate SARIF report
+              sarif_result = generate_sarif_report(req, decision, facts, evaluation_id)
+              if isinstance(sarif_result, Failure):
+                  print(f'SARIF generation failed: {sarif_result.failure()}', file=sys.stderr)
+                  continue
+
+              sarif_report = sarif_result.unwrap()
+
+              # Save SARIF to evidence store
+              sarif_path = Path(f'evidence_store/sarif/{evaluation_id}.sarif')
+              write_result = write_sarif_file(sarif_report, sarif_path)
+              if isinstance(write_result, Failure):
+                  print(f'SARIF write failed: {write_result.failure()}', file=sys.stderr)
+                  continue
+
+              # Collect results
+              all_results.append({
+                  'requirement_uid': req['uid'],
+                  'requirement_key': req.get('key', ''),
+                  'status': decision['status'],
+                  'score': decision['score'],
+                  'evaluation_id': evaluation_id,
+                  'sarif_path': str(sarif_path)
+              })
+
+              # Check for failures (fail gate on high severity failures)
+              severity = req.get('attrs', {}).get('severity', 'medium')
+              if decision['status'] == 'fail' and severity in ['high', 'critical']:
+                  gate_failed = True
+                  print(f\"⚠️  COMPLIANCE FAILURE: {req.get('key', req['uid'])} - {decision.get('reasons', ['No reason provided'])[0]}\")
+
+          # Save results summary
+          with open('compliance_results.json', 'w') as f:
+              json.dump(all_results, f, indent=2)
+
+          # Print summary
+          print(f\"\\nCompliance Gate Summary:\")
+          print(f\"  Total requirements evaluated: {len(all_results)}\")
+          print(f\"  Passed: {sum(1 for r in all_results if r['status'] == 'pass')}\")
+          print(f\"  Failed: {sum(1 for r in all_results if r['status'] == 'fail')}\")
+          print(f\"  Conditional: {sum(1 for r in all_results if r['status'] == 'conditional_pass')}\")
+          print(f\"  Inconclusive: {sum(1 for r in all_results if r['status'] == 'inconclusive')}\")
+
+          # Set exit code
+          if gate_failed:
+              print(f\"\\n❌ Compliance gate FAILED - fix high-severity failures above\")
+              sys.exit(1)
+          else:
+              print(f\"\\n✅ Compliance gate PASSED\")
+          "
+
+      - name: Merge SARIF reports
+        if: always()
+        run: |
+          # Merge all SARIF files into single report for GitHub upload
+          uv run python -c "
+          import json
+          from pathlib import Path
+
+          sarif_files = list(Path('evidence_store/sarif').glob('*.sarif'))
+
+          if not sarif_files:
+              print('No SARIF files to merge')
+              # Create empty SARIF for upload
+              empty_sarif = {
+                  '\$schema': 'https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json',
+                  'version': '2.1.0',
+                  'runs': []
+              }
+              with open('merged.sarif', 'w') as f:
+                  json.dump(empty_sarif, f, indent=2)
+          else:
+              # Load all SARIF files
+              all_runs = []
+              for sarif_file in sarif_files:
+                  with open(sarif_file) as f:
+                      sarif = json.load(f)
+                      all_runs.extend(sarif.get('runs', []))
+
+              # Create merged SARIF
+              merged_sarif = {
+                  '\$schema': 'https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json',
+                  'version': '2.1.0',
+                  'runs': all_runs
+              }
+
+              # Write merged SARIF
+              with open('merged.sarif', 'w') as f:
+                  json.dump(merged_sarif, f, indent=2, ensure_ascii=False)
+
+              print(f'Merged {len(sarif_files)} SARIF files into merged.sarif')
+          "
+
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: merged.sarif
+          category: compliance-gate
+
+      - name: Write verification events
+        if: always()
+        run: |
+          # Write verification events to evidence store
+          uv run python -c "
+          import json
+          from pathlib import Path
+          from reqif_mcp.server import reqif_write_verification
+
+          # Load compliance results
+          results_file = Path('compliance_results.json')
+          if not results_file.exists():
+              print('No compliance results to record')
+              exit(0)
+
+          with open(results_file) as f:
+              results = json.load(f)
+
+          # Write verification event for each evaluation
+          for result in results:
+              event = {
+                  'requirement_uid': result['requirement_uid'],
+                  'target': {
+                      'repo': '${{ github.repository }}',
+                      'commit': '${{ github.sha }}',
+                      'build': '${{ github.run_id }}'
+                  },
+                  'decision': {
+                      'status': result['status'],
+                      'score': result['score'],
+                      'confidence': 0.8
+                  },
+                  'sarif_ref': result['sarif_path']
+              }
+
+              # Call tool to write verification event
+              tool_result = reqif_write_verification(event)
+              if 'error' in tool_result:
+                  print(f\"Warning: Failed to write verification event: {tool_result['error']}\")
+
+          print(f'Wrote {len(results)} verification events')
+          "
+
+      - name: Upload evidence store artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-evidence
+          path: |
+            evidence_store/
+            compliance_results.json
+            requirements.json
+            agent_facts.json
+            merged.sarif
+          retention-days: 90
+
+      - name: Stop FastMCP server
+        if: always()
+        run: |
+          if [ -f mcp_server.pid ]; then
+            kill $(cat mcp_server.pid) || true
+            rm mcp_server.pid
+          fi
+
+      - name: Comment on PR with compliance results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            // Load compliance results
+            let results = [];
+            try {
+              results = JSON.parse(fs.readFileSync('compliance_results.json', 'utf8'));
+            } catch (e) {
+              console.log('No compliance results found');
+              return;
+            }
+
+            // Build summary table
+            const passed = results.filter(r => r.status === 'pass').length;
+            const failed = results.filter(r => r.status === 'fail').length;
+            const conditional = results.filter(r => r.status === 'conditional_pass').length;
+            const total = results.length;
+
+            const status = failed > 0 ? '❌' : '✅';
+
+            const comment = `## ${status} Compliance Gate Results
+
+            **Summary:**
+            - Total requirements evaluated: ${total}
+            - ✅ Passed: ${passed}
+            - ❌ Failed: ${failed}
+            - ⚠️  Conditional: ${conditional}
+
+            **Details:**
+
+            | Requirement | Status | Score |
+            |-------------|--------|-------|
+            ${results.map(r => `| ${r.requirement_key || r.requirement_uid} | ${r.status} | ${r.score.toFixed(2)} |`).join('\n')}
+
+            See artifacts for complete SARIF reports and evidence store.
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
