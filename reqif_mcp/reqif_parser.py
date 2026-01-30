@@ -60,11 +60,6 @@ class ReqIFData(TypedDict):
     attribute_definitions: list[AttributeDefinition]
 
 
-# ReqIF namespace for XML parsing
-REQIF_NS = {
-    "reqif": "http://www.omg.org/spec/ReqIF/20110401/reqif.xsd",
-    "xhtml": "http://www.w3.org/1999/xhtml",
-}
 
 
 def parse_reqif_xml(xml_input: str | Path) -> Result[ReqIFData, Exception]:
