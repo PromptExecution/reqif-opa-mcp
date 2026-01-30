@@ -212,7 +212,7 @@ def validate_requirement_integrity(
                                 "record_uid": uid,
                             }
                         )
-                    elif not policy_baseline[field]:
+                    elif isinstance(policy_baseline[field], str) and not policy_baseline[field].strip():
                         errors.append(
                             {
                                 "severity": "error",
