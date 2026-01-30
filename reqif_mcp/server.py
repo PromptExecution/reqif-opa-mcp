@@ -212,6 +212,9 @@ def reqif_query(
             if req.get("status") == status
         ]
 
+    # Sort by uid (ascending) for deterministic ordering
+    filtered_requirements = sorted(filtered_requirements, key=lambda req: req.get("uid", ""))
+
     # Apply pagination
     start_idx = offset
     if limit is not None:
