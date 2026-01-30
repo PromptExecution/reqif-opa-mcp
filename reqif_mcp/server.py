@@ -165,6 +165,69 @@ def reqif_validate(
     }
 
 
+@mcp.tool()
+def reqif_query(
+    handle: str,
+    subtypes: list[str] | None = None,
+    status: str | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """Query requirements with filtering and pagination.
+
+    Args:
+        handle: Baseline identifier (handle from reqif.parse)
+        subtypes: Filter by subtypes (AND logic - all must match). Optional.
+        status: Filter by status (active/obsolete/draft). Optional.
+        limit: Maximum number of results to return. Optional (no limit if None).
+        offset: Number of results to skip (for pagination). Default: 0.
+
+    Returns:
+        Dictionary with requirements array on success, or error field on failure
+    """
+    # Retrieve requirement records by handle
+    baseline_result = get_baseline_by_handle(handle)
+    if isinstance(baseline_result, Failure):
+        return create_error_response(baseline_result.failure())
+
+    requirements = baseline_result.unwrap()
+
+    # Apply filters
+    filtered_requirements = requirements
+
+    # Filter by subtypes (AND logic - all subtypes must be present)
+    if subtypes:
+        filtered_requirements = [
+            req for req in filtered_requirements
+            if all(subtype in req.get("subtypes", []) for subtype in subtypes)
+        ]
+
+    # Filter by status
+    if status:
+        # Validate status value
+        if status not in ("active", "obsolete", "draft"):
+            return create_error_response(ValueError(f"Invalid status '{status}'. Must be 'active', 'obsolete', or 'draft'"))
+        filtered_requirements = [
+            req for req in filtered_requirements
+            if req.get("status") == status
+        ]
+
+    # Apply pagination
+    start_idx = offset
+    if limit is not None:
+        end_idx = start_idx + limit
+        paginated_requirements = filtered_requirements[start_idx:end_idx]
+    else:
+        paginated_requirements = filtered_requirements[start_idx:]
+
+    return {
+        "requirements": paginated_requirements,
+        "total_count": len(filtered_requirements),
+        "returned_count": len(paginated_requirements),
+        "offset": offset,
+    }
+
+
 def create_error_response(error: Exception) -> dict[str, Any]:
     """Create standardized error response dictionary.
 
