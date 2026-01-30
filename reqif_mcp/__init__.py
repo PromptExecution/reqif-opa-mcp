@@ -22,6 +22,14 @@ from reqif_mcp.sarif_producer import (
     generate_sarif_report,
     write_sarif_file,
 )
+from reqif_mcp.sarif_validator import (
+    SARIFValidationErrorDetail,
+    SARIFValidationResult,
+    load_sarif_schema,
+    validate_sarif,
+    validate_sarif_file,
+    validate_sarif_from_schema_file,
+)
 from reqif_mcp.server import (
     clear_baseline_store,
     create_error_response,
@@ -68,4 +76,10 @@ __all__ = [
     "create_sarif_result",
     "generate_sarif_report",
     "write_sarif_file",
+    "load_sarif_schema",
+    "validate_sarif",
+    "validate_sarif_file",
+    "validate_sarif_from_schema_file",
+    "SARIFValidationResult",
+    "SARIFValidationErrorDetail",
 ]
