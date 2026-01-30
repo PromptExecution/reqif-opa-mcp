@@ -588,3 +588,34 @@
   - Resources follow FastMCP 3.0 conventions with type hints and docstrings
   - Resources access _baseline_store directly for cross-baseline requirement lookups
   - Quality checks: mypy --strict and ruff check both pass
+## 2026-01-31 - US-030
+- Implemented end-to-end integration test exercising all components
+- Files changed:
+  - Created tests/__init__.py (test package initialization)
+  - Created tests/fixtures/sample_baseline.reqif (sample ReqIF with 5 requirements)
+  - Created tests/test_e2e_integration.py (comprehensive integration tests - 540 lines)
+  - Modified reqif_mcp/__init__.py (exported parse_reqif_xml and ReqIFData)
+  - Modified pyproject.toml (added pytest as dev dependency)
+  - Modified uv.lock (updated dependencies)
+- **Learnings for future iterations:**
+  - Integration test structure: tests/ directory with fixtures/ subdirectory for test data
+  - Sample ReqIF baseline includes 5 requirements covering subtypes: CYBER, ACCESS_CONTROL, DATA_PRIVACY, AUDIT, and multi-subtype (CYBER+ACCESS_CONTROL)
+  - ReqIF XML format: THE-VALUE must be child element, not attribute (parser expects <THE-VALUE>text</THE-VALUE>)
+  - ReqIF XML: remove xmlns namespace declaration for MVP parser (parser doesn't handle namespaces)
+  - Integration test implements three test functions:
+    1. test_e2e_compliance_gate_integration: full chain with real OPA binary (requires OPA in PATH)
+    2. test_e2e_multiple_requirements: batch processing test with real OPA (requires OPA in PATH)
+    3. test_e2e_without_opa: complete chain without OPA using mock decision data (always runs)
+  - pytest.mark.skipif decorator pattern: skip tests when dependencies missing (e.g., OPA binary)
+  - Check for binary availability: shutil.which("opa") returns path or None
+  - Mock OPA decision data structure useful for testing SARIF generation without OPA installation
+  - Integration test validates complete traceability chain: requirement uid appears in verification event, SARIF report, and decision logs
+  - Test cleanup pattern: unlink test artifacts after assertions (missing_ok=True prevents errors)
+  - Test fixtures organization: sample_baseline.reqif contains well-formed ReqIF with realistic requirement data
+  - Test validates: ReqIF parsing, normalization, agent facts extraction, SARIF generation, schema validation, verification events, trace links
+  - subprocess.run pattern for invoking stub agent: capture_output=True, text=True, timeout=10
+  - Test asserts all acceptance criteria: 5 requirements, agent facts structure, OPA decision structure, SARIF v2.1.0 compliance, verification event schema, trace links
+  - Evidence store directories created automatically by test: evidence_store/{events/, sarif/, decision_logs/}
+  - pytest returns exit code 0 for passed tests (1 passed, 2 skipped in 1.76s)
+  - Quality checks: mypy --strict and ruff check both pass
+---
