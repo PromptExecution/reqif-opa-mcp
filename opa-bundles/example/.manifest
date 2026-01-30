@@ -1,0 +1,19 @@
+{
+  "revision": "v3.0.0",
+  "roots": [
+    "cyber"
+  ],
+  "metadata": {
+    "bundle": "org/cyber",
+    "description": "Example OPA policy bundle for CYBER subtype requirements in reqif-opa-sarif compliance gate system",
+    "authors": [
+      "ReqIF-OPA-SARIF Team"
+    ],
+    "created_at": "2026-01-30T00:00:00Z",
+    "organization": "org",
+    "subtypes": [
+      "CYBER"
+    ]
+  },
+  "wasm": []
+}

@@ -32,6 +32,9 @@ MANIFEST
 *.manifest
 *.spec
 
+# Exception: Allow OPA bundle .manifest files
+!opa-bundles/**/.manifest
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
