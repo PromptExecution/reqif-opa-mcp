@@ -1,0 +1,9 @@
+## Codebase Patterns
+- This is a greenfield project - no implementation code exists yet
+- Use ruff for linting (never black)
+- Use PEP 484 type hints for all Python code
+- Use uv/uvx for package management (never pip or poetry)
+- Use fastmcp >= 0.4.0 for MCP server
+- Use "returns" module for Rust-style Result/Option patterns
+
+---

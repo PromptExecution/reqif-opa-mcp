@@ -1,0 +1,599 @@
+{
+  "project": "ReqIF-OPA-SARIF Compliance Gate",
+  "branchName": "ralph/reqif-opa-sarif-mvp",
+  "description": "Build a research prototype compliance gate system that transforms requirements (ReqIF format) into deterministic policy evaluations (OPA) with standardized reporting (SARIF). Proof-of-concept MVP with all components working end-to-end.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Define requirement record JSON schema",
+      "description": "As a system architect, I need a canonical requirement record schema so that all components share a consistent data model.",
+      "acceptanceCriteria": [
+        "JSON schema file created for reqif-mcp/1 with fields: uid, key, subtypes[], status, policy_baseline, rubrics[], text, attrs",
+        "Schema includes status enum: active, obsolete, draft",
+        "Schema includes policy_baseline structure with id, version, hash",
+        "Schema includes rubrics array with engine, bundle, package, rule fields",
+        "Schema saved to schemas/requirement-record.schema.json",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Create requirement record validation function",
+      "description": "As a developer, I need a validation function to check requirement records against the schema.",
+      "acceptanceCriteria": [
+        "Validation function accepts requirement record object and schema",
+        "Function returns validation result with errors array",
+        "Function checks all required fields are present",
+        "Function validates field types match schema",
+        "Function exported and importable by other modules",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Create ReqIF XML parser module",
+      "description": "As a compliance officer, I want to parse ReqIF XML documents so that requirements can be ingested.",
+      "acceptanceCriteria": [
+        "Parser module accepts ReqIF 1.2 XML string or file path as input",
+        "Parser extracts SpecObjects, SpecTypes, AttributeDefinitions, AttributeValues",
+        "Parser returns parsed data structure or error object",
+        "Parser handles well-formed XML successfully",
+        "Parser detects and reports malformed XML with clear error messages",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Create ReqIF normalization module",
+      "description": "As a developer, I need ReqIF data normalized into requirement records.",
+      "acceptanceCriteria": [
+        "Normalization module maps ReqIF SpecObject to requirement record",
+        "Extracts uid from ReqIF identifier or generates stable UID (ULID or UUID)",
+        "Maps attributes to normalized fields: key, text, subtypes, status",
+        "Handles missing optional fields with sensible defaults",
+        "Returns array of requirement records conforming to reqif-mcp/1 schema",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Add requirement record integrity validation",
+      "description": "As a system administrator, I want validation of requirement records so that invalid data is caught early.",
+      "acceptanceCriteria": [
+        "Validation function checks uid uniqueness within a baseline",
+        "Validation checks policy_baseline references have required fields",
+        "Validation checks rubric references have required fields (engine, bundle, package, rule)",
+        "Returns structured validation report with errors and warnings arrays",
+        "Supports two modes: basic (structure only) and strict (referential integrity)",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Initialize FastMCP 3.0 server scaffold",
+      "description": "As a CI/CD engineer, I want a FastMCP server scaffold so that ReqIF tools can be exposed.",
+      "acceptanceCriteria": [
+        "FastMCP 3.0 server initialized with project structure",
+        "Server configured with HTTP transport support",
+        "Server configured with STDIO transport for local development",
+        "Server can be started via command line (e.g., python -m reqif_mcp.server)",
+        "Server handles errors gracefully and returns structured error responses",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Implement reqif.parse tool",
+      "description": "As a CI pipeline, I want to parse ReqIF XML via MCP tool.",
+      "acceptanceCriteria": [
+        "Tool reqif.parse registered in FastMCP server",
+        "Tool accepts xml_b64 parameter (base64 encoded XML string)",
+        "Tool calls ReqIF parser and normalization modules",
+        "Tool returns handle (unique identifier) for parsed baseline",
+        "Tool stores parsed requirement records in memory with handle key",
+        "Tool returns error object if parsing or normalization fails",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Implement reqif.validate tool",
+      "description": "As a system administrator, I want to validate parsed requirements via MCP tool.",
+      "acceptanceCriteria": [
+        "Tool reqif.validate registered in FastMCP server",
+        "Tool accepts handle and mode parameters (mode: basic or strict)",
+        "Tool retrieves requirement records by handle",
+        "Tool calls validation function with appropriate mode",
+        "Tool returns structured validation report with errors and warnings",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Implement reqif.query tool with filtering",
+      "description": "As a CI pipeline, I want to query requirements by filters via MCP tool.",
+      "acceptanceCriteria": [
+        "Tool reqif.query registered in FastMCP server",
+        "Tool accepts filters: baseline, subtypes[], status, limit, offset",
+        "Tool filters requirement records by baseline id if provided",
+        "Tool filters by subtypes using AND logic (all subtypes must match)",
+        "Tool filters by status (active/obsolete/draft) if provided",
+        "Tool applies pagination with limit and offset",
+        "Tool returns array of matching requirement records",
+        "Empty result set returns empty array (not error)",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Add deterministic ordering to query results",
+      "description": "As a developer, I need query results to be deterministically ordered.",
+      "acceptanceCriteria": [
+        "Query results sorted by uid (ascending) for consistent ordering",
+        "Same query with same filters returns results in same order",
+        "Pagination with offset returns consistent subsets",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Define agent facts JSON schema",
+      "description": "As an agent developer, I need a standard schema for facts output.",
+      "acceptanceCriteria": [
+        "JSON schema file created for facts/1 with fields: target, facts, evidence[], agent",
+        "Schema includes target structure with repo, commit, build fields",
+        "Schema includes evidence array with type, uri, startLine, endLine, hash fields",
+        "Schema includes agent metadata with name, version, rubric_hint fields",
+        "Facts object allows arbitrary additional properties (flexible)",
+        "Schema saved to schemas/agent-facts.schema.json",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Define OPA evaluation schemas",
+      "description": "As a policy author, I need clear schemas for OPA input and output.",
+      "acceptanceCriteria": [
+        "OPA input schema defined with requirement, facts, context fields",
+        "OPA output schema defined with status enum (pass/fail/conditional_pass/inconclusive/not_applicable/blocked/waived)",
+        "Output schema includes score (0.0-1.0) and confidence (0.0-1.0) fields",
+        "Output schema includes criteria array with id, status, weight, message, evidence fields",
+        "Output schema includes reasons[] and policy provenance fields (bundle, revision, hash)",
+        "Schemas saved to schemas/opa-input.schema.json and schemas/opa-output.schema.json",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Create OPA bundle template structure",
+      "description": "As a policy author, I need an OPA bundle template with example policy.",
+      "acceptanceCriteria": [
+        "Bundle directory created: opa-bundles/example/ with subdirs policy/, data/",
+        "Template includes example rubric policy file for CYBER subtype in policy/cyber.rego",
+        "Policy shows how to access input.requirement and input.facts",
+        "Policy returns decision object with status, criteria, score, confidence, reasons",
+        "Bundle includes data/thresholds.json with example lookup table",
+        "Bundle includes .manifest file with metadata",
+        "Typecheck passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Create OPA evaluator module",
+      "description": "As a CI pipeline, I want to evaluate requirements against facts using OPA.",
+      "acceptanceCriteria": [
+        "OPA evaluator module can load OPA bundle from filesystem path",
+        "Evaluator composes OPA input JSON from requirement + facts + context",
+        "Evaluator invokes OPA via subprocess (opa eval command) or REST API",
+        "Evaluator parses OPA decision output JSON into structured object",
+        "Evaluator returns decision object or error if evaluation fails",
+        "Module configurable for OPA bundle path and OPA endpoint/binary path",
+        "Typecheck passes"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Add OPA output schema validation",
+      "description": "As a developer, I want OPA outputs validated against expected schema.",
+      "acceptanceCriteria": [
+        "OPA evaluator validates decision output against OPA output schema",
+        "Validation checks status is valid enum value",
+        "Validation checks required fields (status, criteria, reasons, policy) are present",
+        "Invalid OPA output logged and returns error (not crash)",
+        "Typecheck passes"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Enable OPA decision logging",
+      "description": "As an auditor, I want OPA decision logs captured for every evaluation.",
+      "acceptanceCriteria": [
+        "Decision log module creates JSONL append-only log file",
+        "Each evaluation produces log entry with unique evaluation id (ULID)",
+        "Log entry includes input (requirement + facts), output (decision), timestamp, policy version",
+        "Logs written to evidence_store/decision_logs/decisions.jsonl",
+        "Log rotation strategy documented in README (even if not implemented)",
+        "Typecheck passes"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Define agent runner interface",
+      "description": "As an agent developer, I need a clear interface contract for agent runners.",
+      "acceptanceCriteria": [
+        "Agent runner interface defined: run_agent(subtype, artifacts_path, requirement_context) -> facts",
+        "Interface documented in docs/agent-runner-interface.md with examples",
+        "Input parameters documented: subtype (string), artifacts_path (path), requirement_context (object)",
+        "Output documented: facts object conforming to facts/1 schema",
+        "Error handling documented: return error object, do not throw",
+        "Typecheck passes"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Create stub agent for testing",
+      "description": "As a system tester, I need a stub agent that produces synthetic facts.",
+      "acceptanceCriteria": [
+        "Stub agent script accepts subtype as CLI argument",
+        "Stub agent generates synthetic facts appropriate for subtype (e.g., CYBER: uses_crypto_library=true)",
+        "Stub agent generates synthetic evidence pointers (code_span with repo URI and line numbers)",
+        "Stub agent outputs valid facts/1 JSON to stdout",
+        "Stub agent includes agent metadata (name: stub-agent, version: 0.1.0)",
+        "Stub agent can be run standalone: python agents/stub_agent.py --subtype CYBER",
+        "Typecheck passes"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Document SARIF mapping rules",
+      "description": "As a compliance officer, I need clear mapping rules from OPA decisions to SARIF.",
+      "acceptanceCriteria": [
+        "Mapping documented in docs/sarif-mapping.md",
+        "Document specifies OPA status to SARIF result.level mapping",
+        "Mapping: pass → omit result (or note), fail → error, conditional_pass → warning",
+        "Mapping: inconclusive/blocked → warning with property triage=needed, not_applicable → omit",
+        "Document specifies requirement uid/key maps to SARIF rule.id",
+        "Document specifies evidence pointers map to SARIF result.locations[]",
+        "Document lists required property bag fields",
+        "Typecheck passes"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Create SARIF producer module",
+      "description": "As a CI pipeline, I want SARIF reports generated from OPA decisions.",
+      "acceptanceCriteria": [
+        "SARIF producer module accepts OPA decision + requirement + facts as input",
+        "Producer generates SARIF run object with tool.driver.name = policy bundle ID",
+        "Producer creates SARIF rule for each requirement with rule.id = requirement uid",
+        "Producer creates SARIF result for each failing/warning criterion",
+        "Producer maps OPA status to SARIF result.level per documented rules",
+        "Producer returns SARIF JSON object",
+        "Typecheck passes"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Add evidence locations to SARIF results",
+      "description": "As a developer, I want evidence code spans mapped to SARIF locations.",
+      "acceptanceCriteria": [
+        "SARIF producer extracts evidence from facts.evidence[] array",
+        "Producer maps evidence with type=code_span to SARIF physicalLocation",
+        "Location includes artifactLocation.uri, region.startLine, region.endLine",
+        "Only includes locations when evidence has code span data",
+        "Multiple evidence items produce multiple locations in result",
+        "Typecheck passes"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Add property bag to SARIF results",
+      "description": "As a compliance officer, I need metadata in SARIF results for traceability.",
+      "acceptanceCriteria": [
+        "SARIF producer adds properties object to each result",
+        "Properties include: requirement_uid, requirement_key, subtypes[]",
+        "Properties include: policy_baseline.version, opa.policy.hash, agent.version",
+        "Properties extracted from requirement, decision, and facts inputs",
+        "Typecheck passes"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-023",
+      "title": "Add SARIF file writer",
+      "description": "As a CI pipeline, I want SARIF JSON written to file.",
+      "acceptanceCriteria": [
+        "SARIF producer includes write_sarif_file function",
+        "Function accepts SARIF object and output file path",
+        "Function writes pretty-printed JSON to file",
+        "Function creates parent directories if needed",
+        "Function returns file path or error",
+        "Typecheck passes"
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-024",
+      "title": "Integrate SARIF schema validator",
+      "description": "As a quality engineer, I want SARIF validated against official schema.",
+      "acceptanceCriteria": [
+        "SARIF validator module integrates OSS SARIF schema (download from SARIF repo or use library)",
+        "Validator checks conformance to SARIF v2.1.0 JSON schema",
+        "Validator returns validation result with errors array",
+        "Validator reports specific schema violations with JSON paths",
+        "Validation function exported for use in tests",
+        "Typecheck passes"
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-025",
+      "title": "Define verification event schema",
+      "description": "As a compliance officer, I need verification events recorded for traceability.",
+      "acceptanceCriteria": [
+        "Verification event schema defined with fields: event_id, requirement_uid, target, decision, timestamp, sarif_ref",
+        "Target includes repo, commit, build fields",
+        "Decision includes status, score, confidence fields",
+        "Schema saved to schemas/verification-event.schema.json",
+        "Typecheck passes"
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-026",
+      "title": "Create evidence store structure",
+      "description": "As a data analyst, I need an evidence store with clear directory structure.",
+      "acceptanceCriteria": [
+        "Evidence store directory created: evidence_store/ with subdirs events/, sarif/, decision_logs/",
+        "Structure documented in docs/evidence-store.md",
+        "Events directory stores verification events JSONL log",
+        "SARIF directory stores SARIF artifacts named by evaluation id",
+        "Decision logs directory stores OPA decision logs",
+        "Typecheck passes"
+      ],
+      "priority": 26,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-027",
+      "title": "Implement reqif.write_verification tool",
+      "description": "As a compliance officer, I need verification events written to store.",
+      "acceptanceCriteria": [
+        "Tool reqif.write_verification registered in FastMCP server",
+        "Tool accepts event object conforming to verification event schema",
+        "Tool generates unique event_id (ULID) if not provided",
+        "Tool appends event as JSONL to evidence_store/events/verifications.jsonl",
+        "Tool supports concurrent writes (unique file names or basic locking)",
+        "Tool returns success or error",
+        "Typecheck passes"
+      ],
+      "priority": 27,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-028",
+      "title": "Implement reqif.export_req_set tool for JSON format",
+      "description": "As an agent runner, I need to export requirement subsets in JSON format.",
+      "acceptanceCriteria": [
+        "Tool reqif.export_req_set registered in FastMCP server",
+        "Tool accepts query filters (baseline, subtypes, status) and format parameter",
+        "For format=json: returns array of requirement records as JSON string",
+        "Export uses same filtering logic as reqif.query",
+        "Export is deterministic (same query produces same output)",
+        "Typecheck passes"
+      ],
+      "priority": 28,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-029",
+      "title": "Implement versioned MCP resources",
+      "description": "As a CI pipeline, I want to access requirements via MCP resources.",
+      "acceptanceCriteria": [
+        "Resource reqif://baseline/{id} returns baseline metadata JSON",
+        "Baseline metadata includes id, version, hash, requirement_count",
+        "Resource reqif://requirement/{uid} returns single requirement record by uid",
+        "Resources return 404 error for non-existent baseline/requirement",
+        "Resources registered in FastMCP server following FastMCP 3.0 conventions",
+        "Typecheck passes"
+      ],
+      "priority": 29,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-030",
+      "title": "Create end-to-end integration test",
+      "description": "As a system tester, I need an end-to-end test exercising all components.",
+      "acceptanceCriteria": [
+        "Integration test seeds sample ReqIF baseline with 5 test requirements",
+        "Test invokes stub agent to produce facts for target",
+        "Test invokes OPA evaluation with example bundle",
+        "Test generates SARIF report",
+        "Test writes verification event to store",
+        "Test validates SARIF output against schema",
+        "Test asserts trace links present (requirement uid in event and SARIF)",
+        "Test runs with pytest or similar and fails on assertion errors",
+        "Typecheck passes"
+      ],
+      "priority": 30,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-031",
+      "title": "Add ReqIF parser unit tests",
+      "description": "As a developer, I need comprehensive ReqIF parser tests.",
+      "acceptanceCriteria": [
+        "Test: parse well-formed ReqIF XML successfully",
+        "Test: reject malformed XML with clear error",
+        "Test: handle invalid references in ReqIF (missing SpecType)",
+        "Test: handle empty ReqIF (no SpecObjects) without error",
+        "All tests pass with clear assertions",
+        "Typecheck passes"
+      ],
+      "priority": 31,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-032",
+      "title": "Add OPA policy bundle tests",
+      "description": "As a policy author, I need tests for OPA policies.",
+      "acceptanceCriteria": [
+        "Test suite created in opa-bundles/example/tests/ or example_test.rego",
+        "Tests use golden inputs (sample requirement + facts JSON)",
+        "Tests assert expected decision object (status, criteria, score)",
+        "Tests cover edge cases: missing facts, boundary conditions",
+        "Tests run with 'opa test' command successfully",
+        "Typecheck passes"
+      ],
+      "priority": 32,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-033",
+      "title": "Add query correctness unit tests",
+      "description": "As a developer, I need tests for requirement query filtering.",
+      "acceptanceCriteria": [
+        "Test: filter by single subtype returns correct subset",
+        "Test: filter by multiple subtypes (AND logic) works correctly",
+        "Test: filter by baseline returns only requirements from that baseline",
+        "Test: pagination with limit/offset returns consistent results",
+        "Test: query with no matches returns empty array",
+        "All tests pass with clear assertions",
+        "Typecheck passes"
+      ],
+      "priority": 33,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-034",
+      "title": "Add SARIF mapping invariant tests",
+      "description": "As a quality engineer, I need tests for SARIF mapping invariants.",
+      "acceptanceCriteria": [
+        "Test: OPA fail status produces SARIF error result",
+        "Test: OPA pass status produces no result or note result",
+        "Test: OPA conditional_pass produces SARIF warning result",
+        "Test: rule.id matches requirement uid (stable)",
+        "Test: result.locations present when evidence has code spans",
+        "Test: property bag includes all required fields",
+        "All tests pass with clear assertions",
+        "Typecheck passes"
+      ],
+      "priority": 34,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-035",
+      "title": "Create deployment documentation",
+      "description": "As a DevOps engineer, I need deployment documentation.",
+      "acceptanceCriteria": [
+        "Documentation created in docs/deployment.md",
+        "Covers local development setup (prerequisites, install, run server)",
+        "Covers CI/CD integration with GitHub Actions example",
+        "Covers containerized deployment with Dockerfile example",
+        "Documents configuration options (OPA path, bundle path, evidence store path)",
+        "Includes troubleshooting section with common issues",
+        "Typecheck passes"
+      ],
+      "priority": 35,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-036",
+      "title": "Create sample CI pipeline configuration",
+      "description": "As a CI engineer, I want sample CI configuration for compliance gate.",
+      "acceptanceCriteria": [
+        "Sample GitHub Actions workflow file created: .github/workflows/compliance-gate.yml",
+        "Workflow shows how to start FastMCP server in CI",
+        "Workflow shows how to query requirements using MCP tools",
+        "Workflow shows how to run stub agent and invoke OPA evaluation",
+        "Workflow shows how to publish SARIF artifact",
+        "Workflow shows how to fail pipeline on compliance gate failure (check OPA decision status)",
+        "Typecheck passes"
+      ],
+      "priority": 36,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
