@@ -72,3 +72,26 @@
   - Quality checks: mypy --strict and ruff check both pass
 ---
 
+## 2026-01-30 - US-004
+- Implemented ReqIF normalization module that transforms ReqIF data into canonical requirement records
+- Files changed:
+  - Created reqif_mcp/normalization.py (256 lines)
+  - Modified reqif_mcp/__init__.py (added normalize_reqif export)
+  - Modified pyproject.toml (added python-ulid dependency)
+  - Modified uv.lock (updated dependencies)
+- **Learnings for future iterations:**
+  - Normalization module uses ULID library for stable, sortable unique identifiers
+  - Main function: normalize_reqif(reqif_data, policy_baseline_id, policy_baseline_version) -> Result[list[dict], Exception]
+  - Normalization strategy: build lookup maps for SpecTypes and AttributeDefinitions, then normalize each SpecObject
+  - UID extraction: use ReqIF identifier if valid (alphanumeric + _-), otherwise generate ULID
+  - Attribute mapping: ReqIF AttributeValues mapped to normalized fields via AttributeDefinition long_name
+  - Attribute normalization: lowercase, replace spaces/hyphens with underscores
+  - Subtypes extraction: check subtypes attribute, type attribute, or infer from SpecType long_name (default: ["GENERAL"])
+  - Status validation: ensure status is one of active/obsolete/draft (default: "active")
+  - Policy baseline: includes id, version, and computed hash (SHA256 of id:version for MVP)
+  - Default rubrics: generate OPA rubric for each subtype (engine=opa, bundle=org/compliance, package=compliance.{subtype}, rule=decision)
+  - Optional attrs object: only include if non-empty (severity, owner, verify_method)
+  - Return type: Result[list[dict[str, Any]], Exception] for consistent error handling
+  - Quality checks: mypy --strict and ruff check both pass
+---
+
