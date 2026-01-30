@@ -28,6 +28,7 @@ from ulid import ULID
 
 from reqif_mcp.normalization import normalize_reqif
 from reqif_mcp.reqif_parser import parse_reqif_xml
+from reqif_mcp.validation import validate_requirement_integrity
 
 # Initialize FastMCP server
 mcp = FastMCP("reqif-mcp", version="0.1.0")
@@ -120,6 +121,47 @@ def reqif_parse(
             "id": policy_baseline_id,
             "version": policy_baseline_version,
         },
+    }
+
+
+@mcp.tool()
+def reqif_validate(
+    handle: str,
+    mode: str = "basic",
+) -> dict[str, Any]:
+    """Validate parsed requirement records against integrity rules.
+
+    Args:
+        handle: Unique identifier for the baseline
+        mode: Validation mode - "basic" (structure only) or "strict" (referential integrity)
+
+    Returns:
+        Dictionary with validation report on success, or error field on failure
+    """
+    # Validate mode parameter
+    if mode not in ("basic", "strict"):
+        return create_error_response(ValueError(f"Invalid mode '{mode}'. Must be 'basic' or 'strict'"))
+
+    # Retrieve requirement records by handle
+    baseline_result = get_baseline_by_handle(handle)
+    if isinstance(baseline_result, Failure):
+        return create_error_response(baseline_result.failure())
+
+    requirements = baseline_result.unwrap()
+
+    # Call validation function
+    validation_result = validate_requirement_integrity(requirements, mode)
+    if isinstance(validation_result, Failure):
+        return create_error_response(validation_result.failure())
+
+    # Return structured validation report
+    report = validation_result.unwrap()
+    return {
+        "valid": report["valid"],
+        "errors": report["errors"],
+        "warnings": report["warnings"],
+        "mode": mode,
+        "requirement_count": len(requirements),
     }
 
 
