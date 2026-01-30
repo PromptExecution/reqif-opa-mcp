@@ -261,3 +261,24 @@
   - Policy uses default decision rule for when no specific rules match (returns inconclusive status)
   - Quality checks: mypy --strict and ruff check both pass (no Python code added, only Rego and JSON)
 ---
+## 2026-01-30 - US-014
+- Implemented OPA evaluator module for executing policy evaluations
+- Files changed:
+  - Created reqif_mcp/opa_evaluator.py (236 lines)
+  - Modified reqif_mcp/__init__.py (exported OPA evaluator functions)
+- **Learnings for future iterations:**
+  - OPA evaluator module provides four main functions:
+    1. load_bundle_manifest(bundle_path) -> loads .manifest file from OPA bundle directory
+    2. compose_opa_input(requirement, facts, context) -> creates OPA input JSON structure
+    3. evaluate_with_opa(opa_input, bundle_path, package, rule, opa_binary) -> invokes OPA subprocess
+    4. evaluate_requirement(requirement, facts, bundle_path, ...) -> high-level convenience function
+  - OPA invocation via subprocess: `opa eval --bundle <path> --format json --stdin-input <query>`
+  - OPA eval query format: `data.{package}.{rule}` (e.g., "data.cyber.access_control.v3.decision")
+  - OPA output structure: {"result": [{"expressions": [{"value": <decision>}]}]} - need to extract nested value
+  - OPA subprocess configured with 30 second timeout to prevent hanging
+  - Module supports configurable OPA binary path (defaults to "opa" in PATH)
+  - Package can be auto-detected from requirement.rubrics[0].package if not specified
+  - All functions return Result[T, Exception] for consistent error handling
+  - Error cases handled: bundle not found, manifest missing, OPA binary not found, timeout, invalid JSON output
+  - Quality checks: mypy --strict and ruff check both pass
+---
