@@ -496,3 +496,27 @@
   - Events will be written to evidence_store/events/verifications.jsonl (append-only JSONL format)
   - Quality checks: mypy --strict and ruff check both pass (no Python code, schema only)
 ---
+## 2026-01-31 - US-026
+- Implemented evidence store directory structure and comprehensive documentation
+- Files changed:
+  - Created docs/evidence-store.md (336 lines)
+  - Modified ralph/prd.json (marked US-026 as passes: true)
+- **Learnings for future iterations:**
+  - Evidence store directory structure: evidence_store/{events/, sarif/, decision_logs/}
+  - Directory already existed from US-016 (decision logging implementation)
+  - Evidence store provides complete audit trail for compliance gate evaluations
+  - Three artifact types: verification events (JSONL), SARIF reports (JSON), decision logs (JSONL)
+  - Verification events (events/verifications.jsonl): links requirement → evaluation → SARIF
+  - SARIF artifacts (sarif/{evaluation_id}.sarif): compliance reports for CI/CD ingestion
+  - Decision logs (decision_logs/decisions.jsonl): complete OPA input/output for audit
+  - Traceability chain uses ULID evaluation_id to link all artifacts
+  - Evidence store design principles: immutability, traceability, auditability, temporal ordering
+  - JSONL format enables append-only writes and supports concurrent access patterns
+  - Documentation includes: directory structure, schemas, traceability chain, data governance, analytics queries
+  - Documentation covers: retention policy, access control, backup/archival, CI/CD integration
+  - Production considerations: log rotation (logrotate), Parquet export for analytics, data warehouse integration
+  - File size planning: MVP <10MB, production >1GB/year (requires rotation strategy)
+  - Error handling: decision logs non-fatal (warn and continue), verification events critical (return error)
+  - Concurrent writes: MVP single-threaded, production needs locking or unique filenames
+  - Quality checks: mypy --strict and ruff check both pass (no Python code, documentation only)
+---
