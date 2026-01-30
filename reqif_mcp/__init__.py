@@ -9,6 +9,7 @@ from reqif_mcp.decision_logger import (
     log_evaluation,
 )
 from reqif_mcp.normalization import normalize_reqif
+from reqif_mcp.reqif_parser import ReqIFData, parse_reqif_xml
 from reqif_mcp.opa_evaluator import (
     compose_opa_input,
     evaluate_requirement,
@@ -52,6 +53,8 @@ from reqif_mcp.validation import (
 
 __all__ = [
     "normalize_reqif",
+    "parse_reqif_xml",
+    "ReqIFData",
     "validate_requirement_record",
     "validate_requirement_record_from_schema_file",
     "validate_requirement_integrity",
