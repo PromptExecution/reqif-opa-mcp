@@ -19,10 +19,15 @@ Tools:
 - reqif.export_req_set: Export requirement subsets
 """
 
+import base64
 from typing import Any
 
 from fastmcp import FastMCP
 from returns.result import Failure, Result, Success
+from ulid import ULID
+
+from reqif_mcp.normalization import normalize_reqif
+from reqif_mcp.reqif_parser import parse_reqif_xml
 
 # Initialize FastMCP server
 mcp = FastMCP("reqif-mcp", version="0.1.0")
@@ -64,13 +69,58 @@ def clear_baseline_store() -> None:
     _baseline_store.clear()
 
 
-# Placeholder for tools to be implemented in future user stories
-# Tools will be registered here as @mcp.tool() decorators
-# Example:
-# @mcp.tool()
-# def reqif_parse(xml_b64: str) -> dict[str, Any]:
-#     """Parse ReqIF XML and return handle."""
-#     pass
+@mcp.tool()
+def reqif_parse(
+    xml_b64: str,
+    policy_baseline_id: str = "default",
+    policy_baseline_version: str = "1.0.0",
+) -> dict[str, Any]:
+    """Parse ReqIF XML and store parsed requirement records.
+
+    Args:
+        xml_b64: Base64-encoded ReqIF 1.2 XML string
+        policy_baseline_id: Policy baseline identifier (default: "default")
+        policy_baseline_version: Policy baseline version (default: "1.0.0")
+
+    Returns:
+        Dictionary with handle field on success, or error field on failure
+    """
+    try:
+        # Decode base64 XML
+        xml_bytes = base64.b64decode(xml_b64)
+        xml_string = xml_bytes.decode("utf-8")
+    except Exception as e:
+        return create_error_response(ValueError(f"Failed to decode base64 XML: {e}"))
+
+    # Parse ReqIF XML
+    parse_result = parse_reqif_xml(xml_string)
+    if isinstance(parse_result, Failure):
+        return create_error_response(parse_result.failure())
+
+    reqif_data = parse_result.unwrap()
+
+    # Normalize ReqIF data into requirement records
+    normalize_result = normalize_reqif(reqif_data, policy_baseline_id, policy_baseline_version)
+    if isinstance(normalize_result, Failure):
+        return create_error_response(normalize_result.failure())
+
+    requirements = normalize_result.unwrap()
+
+    # Generate unique handle (ULID)
+    handle = str(ULID())
+
+    # Store parsed requirement records in memory
+    store_baseline(handle, requirements)
+
+    # Return handle
+    return {
+        "handle": handle,
+        "requirement_count": len(requirements),
+        "policy_baseline": {
+            "id": policy_baseline_id,
+            "version": policy_baseline_version,
+        },
+    }
 
 
 def create_error_response(error: Exception) -> dict[str, Any]:
