@@ -217,7 +217,7 @@ def validate_requirement_integrity(
                             {
                                 "severity": "error",
                                 "field": f"policy_baseline.{field}",
-                                "message": f"Field '{field}' in policy_baseline must be a string",
+                                "message": f"Field '{field}' must be a string",
                                 "record_uid": uid,
                             }
                         )
@@ -226,7 +226,7 @@ def validate_requirement_integrity(
                             {
                                 "severity": "error",
                                 "field": f"policy_baseline.{field}",
-                                "message": f"Empty value for required field '{field}' in policy_baseline",
+                                "message": f"Empty value for required field '{field}'",
                                 "record_uid": uid,
                             }
                         )
@@ -281,7 +281,7 @@ def validate_requirement_integrity(
                                 {
                                     "severity": "error",
                                     "field": f"rubrics[{idx}].{field}",
-                                    "message": f"Field '{field}' in rubric at index {idx} must be a string",
+                                    "message": f"Field '{field}' must be a string",
                                     "record_uid": uid,
                                 }
                             )
@@ -290,7 +290,7 @@ def validate_requirement_integrity(
                                 {
                                     "severity": "error",
                                     "field": f"rubrics[{idx}].{field}",
-                                    "message": f"Empty value for required field '{field}' in rubric at index {idx}",
+                                    "message": f"Empty value for required field '{field}'",
                                     "record_uid": uid,
                                 }
                             )
