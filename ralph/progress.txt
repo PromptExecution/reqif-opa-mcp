@@ -349,3 +349,27 @@
   - Integration workflow: CI queries requirements → agent runner → agent extracts facts → OPA evaluates → SARIF reports
   - Quality checks: mypy --strict and ruff check both pass (no Python code, documentation only)
 ---
+
+## 2026-01-31 - US-018
+- Implemented stub agent for testing with synthetic facts generation
+- Files changed:
+  - Created agents/stub_agent.py (220 lines)
+  - Modified ralph/prd.json (marked US-018 as passes: true)
+- **Learnings for future iterations:**
+  - Stub agent provides synthetic facts for testing without real analysis
+  - Agent directory structure: agents/ at project root for all agent implementations
+  - CLI argument parsing: use argparse with --subtype required argument
+  - Facts generation by subtype: define facts_by_subtype dict with domain-specific facts per subtype
+  - Evidence generation by subtype: define evidence_by_subtype dict with code_span, artifact, log, metric entries
+  - Facts/1 output structure: target (repo, commit, build), facts (flexible), evidence[], agent (name, version, rubric_hint)
+  - Stub agent supports multiple subtypes: CYBER, ACCESS_CONTROL, DATA_PRIVACY, AUDIT
+  - CYBER facts: uses_crypto_library, crypto_algorithms[], inputs_validated[], security_headers_enabled, tls_version
+  - ACCESS_CONTROL facts: authentication_required, authorization_mechanism, rbac_roles_defined[], session_timeout_seconds, multi_factor_auth_enabled
+  - DATA_PRIVACY facts: pii_fields_encrypted[], data_retention_policy_days, gdpr_compliant_deletion, consent_tracking_enabled
+  - AUDIT facts: audit_logging_enabled, log_retention_days, log_integrity_protection, audit_events_captured[]
+  - Unknown subtypes handled gracefully with generic facts (analysis_performed, subtype, stub_agent_note)
+  - Evidence URIs use stable patterns: repo://, artifact://, file://
+  - Agent metadata: name=stub-agent, version=0.1.0, rubric_hint=compliance.{subtype}
+  - Stub agent made executable with chmod +x for convenience
+  - Quality checks: mypy --strict and ruff check both pass
+---
