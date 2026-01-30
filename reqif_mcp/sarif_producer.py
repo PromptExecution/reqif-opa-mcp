@@ -10,8 +10,12 @@ Key responsibilities:
 - Generate SARIF run objects with tool metadata
 """
 
+import json
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
+
+from returns.result import Failure, Result, Success
 from ulid import ULID
 
 
@@ -315,3 +319,37 @@ def generate_sarif_report(
     }
 
     return sarif_report
+
+
+def write_sarif_file(
+    sarif_object: dict[str, Any],
+    output_path: str | Path,
+) -> Result[str, Exception]:
+    """Write SARIF JSON object to file.
+
+    Creates parent directories if needed and writes pretty-printed JSON.
+    Returns the absolute path of the written file on success.
+
+    Args:
+        sarif_object: SARIF v2.1.0 report object to write
+        output_path: File path to write to (string or Path)
+
+    Returns:
+        Result[str, Exception]: Success with absolute file path, or Failure with exception
+    """
+    try:
+        # Convert to Path object
+        file_path = Path(output_path)
+
+        # Create parent directories if needed
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write pretty-printed JSON
+        with file_path.open("w", encoding="utf-8") as f:
+            json.dump(sarif_object, f, indent=2, ensure_ascii=False)
+
+        # Return absolute path
+        return Success(str(file_path.absolute()))
+
+    except Exception as e:
+        return Failure(e)

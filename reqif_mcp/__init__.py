@@ -20,6 +20,7 @@ from reqif_mcp.sarif_producer import (
     create_sarif_result,
     create_sarif_rule,
     generate_sarif_report,
+    write_sarif_file,
 )
 from reqif_mcp.server import (
     clear_baseline_store,
@@ -66,4 +67,5 @@ __all__ = [
     "create_sarif_rule",
     "create_sarif_result",
     "generate_sarif_report",
+    "write_sarif_file",
 ]
