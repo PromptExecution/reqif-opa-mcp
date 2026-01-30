@@ -725,3 +725,24 @@
   - Quality checks: mypy --strict and ruff check both pass
   - All 12 pytest tests pass in 1.57s
 ---
+## 2026-01-31 - US-035
+- Implemented comprehensive deployment documentation
+- Files changed:
+  - Created docs/deployment.md (680 lines)
+  - Modified ralph/prd.json (marked US-035 as passes: true)
+- **Learnings for future iterations:**
+  - Deployment documentation covers three deployment scenarios: local development, CI/CD integration, containerized deployment
+  - Documentation structure: Prerequisites → Local Setup → Running Server → CI/CD → Docker → Configuration → Troubleshooting
+  - Prerequisites section includes all required dependencies: Python 3.10+, uv, OPA, Git
+  - Local development setup provides step-by-step installation for macOS, Linux, and Windows
+  - Server supports two transport modes: STDIO (local development) and HTTP (CI/CD)
+  - CI/CD integration includes complete GitHub Actions and GitLab CI examples
+  - GitHub Actions workflow demonstrates full compliance gate: parse ReqIF → run agent → evaluate with OPA → generate SARIF → upload to GitHub Security
+  - Containerized deployment includes Dockerfile and docker-compose.yml with health checks
+  - Configuration options documented via environment variables: OPA_BINARY_PATH, OPA_BUNDLE_PATH, EVIDENCE_STORE_PATH, etc.
+  - Troubleshooting section covers 12 common issues: server startup, OPA binary, evaluation failures, SARIF validation, permissions, port conflicts, Docker crashes, type checking, linting, test failures, timeouts, skipped tests
+  - Each troubleshooting issue includes symptoms and multiple solutions
+  - Documentation links to additional resources: ReqIF spec, OPA docs, SARIF spec, FastMCP docs, project docs
+  - Quality checks: mypy --strict and ruff check both pass (no Python code, documentation only)
+---
+
