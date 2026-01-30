@@ -305,3 +305,67 @@ def validate_requirement_integrity(
 
     except Exception as e:
         return Failure(e)
+
+
+def validate_verification_event(
+    event: dict[str, Any],
+    schema: dict[str, Any],
+) -> Result[ValidationResult, Exception]:
+    """Validate verification event against JSON schema.
+
+    Args:
+        event: Verification event object to validate
+        schema: JSON schema to validate against
+
+    Returns:
+        Success with ValidationResult or Failure with exception
+    """
+    try:
+        validator = Draft202012Validator(schema)
+        errors: list[ValidationErrorDetail] = []
+
+        # Collect all validation errors
+        for error in validator.iter_errors(event):
+            errors.append(
+                {
+                    "field": ".".join(str(p) for p in error.path) or "root",
+                    "message": error.message,
+                    "value": error.instance if hasattr(error, "instance") else None,
+                }
+            )
+
+        result: ValidationResult = {
+            "valid": len(errors) == 0,
+            "errors": errors,
+        }
+
+        return Success(result)
+
+    except Exception as e:
+        return Failure(e)
+
+
+def validate_verification_event_from_schema_file(
+    event: dict[str, Any],
+    schema_path: Path | str,
+) -> Result[ValidationResult, Exception]:
+    """Validate verification event against JSON schema from file.
+
+    Convenience function that loads schema and validates in one call.
+
+    Args:
+        event: Verification event object to validate
+        schema_path: Path to JSON schema file
+
+    Returns:
+        Success with ValidationResult or Failure with exception
+    """
+    schema_result = load_schema(schema_path)
+    match schema_result:
+        case Success(schema):
+            return validate_verification_event(event, schema)
+        case Failure(error):
+            return Failure(error)
+        case _:
+            # This should never happen given Result type, but mypy needs it
+            return Failure(Exception("Unexpected result type"))

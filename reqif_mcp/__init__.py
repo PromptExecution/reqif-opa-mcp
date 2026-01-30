@@ -46,6 +46,8 @@ from reqif_mcp.validation import (
     validate_requirement_integrity,
     validate_requirement_record,
     validate_requirement_record_from_schema_file,
+    validate_verification_event,
+    validate_verification_event_from_schema_file,
 )
 
 __all__ = [
@@ -53,6 +55,8 @@ __all__ = [
     "validate_requirement_record",
     "validate_requirement_record_from_schema_file",
     "validate_requirement_integrity",
+    "validate_verification_event",
+    "validate_verification_event_from_schema_file",
     "ValidationResult",
     "ValidationErrorDetail",
     "IntegrityValidationResult",

@@ -20,6 +20,9 @@ Tools:
 """
 
 import base64
+import json
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from fastmcp import FastMCP
@@ -28,7 +31,10 @@ from ulid import ULID
 
 from reqif_mcp.normalization import normalize_reqif
 from reqif_mcp.reqif_parser import parse_reqif_xml
-from reqif_mcp.validation import validate_requirement_integrity
+from reqif_mcp.validation import (
+    validate_requirement_integrity,
+    validate_verification_event_from_schema_file,
+)
 
 # Initialize FastMCP server
 mcp = FastMCP("reqif-mcp", version="0.1.0")
@@ -229,6 +235,62 @@ def reqif_query(
         "returned_count": len(paginated_requirements),
         "offset": offset,
     }
+
+
+@mcp.tool()
+def reqif_write_verification(
+    event: dict[str, Any],
+    log_file: str = "evidence_store/events/verifications.jsonl",
+) -> dict[str, Any]:
+    """Write verification event to evidence store.
+
+    Args:
+        event: Verification event object conforming to verification-event schema
+        log_file: Path to JSONL log file (default: evidence_store/events/verifications.jsonl)
+
+    Returns:
+        Dictionary with success message and event_id on success, or error field on failure
+    """
+    # Generate event_id if not provided
+    if "event_id" not in event or not event["event_id"]:
+        event["event_id"] = str(ULID())
+
+    # Add timestamp if not provided
+    if "timestamp" not in event or not event["timestamp"]:
+        event["timestamp"] = datetime.now(timezone.utc).isoformat()
+
+    # Validate event against schema
+    schema_path = Path(__file__).parent.parent / "schemas" / "verification-event.schema.json"
+    validation_result = validate_verification_event_from_schema_file(event, schema_path)
+
+    if isinstance(validation_result, Failure):
+        return create_error_response(validation_result.failure())
+
+    validation = validation_result.unwrap()
+    if not validation["valid"]:
+        error_messages = [f"{err['field']}: {err['message']}" for err in validation["errors"]]
+        return create_error_response(
+            ValueError(f"Verification event validation failed: {'; '.join(error_messages)}")
+        )
+
+    # Append event to JSONL log file
+    try:
+        log_path = Path(log_file)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with log_path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+        return {
+            "success": True,
+            "event_id": event["event_id"],
+            "log_file": str(log_path.absolute()),
+        }
+
+    except Exception as e:
+        return create_error_response(
+            Exception(f"Failed to write verification event to log: {e}")
+        )
 
 
 def create_error_response(error: Exception) -> dict[str, Any]:
