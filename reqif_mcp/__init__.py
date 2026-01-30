@@ -3,6 +3,14 @@
 __version__ = "0.1.0"
 
 from reqif_mcp.normalization import normalize_reqif
+from reqif_mcp.server import (
+    clear_baseline_store,
+    create_error_response,
+    get_baseline_by_handle,
+    mcp,
+    run_server,
+    store_baseline,
+)
 from reqif_mcp.validation import (
     IntegrityErrorDetail,
     IntegrityValidationResult,
@@ -22,4 +30,10 @@ __all__ = [
     "ValidationErrorDetail",
     "IntegrityValidationResult",
     "IntegrityErrorDetail",
+    "mcp",
+    "run_server",
+    "get_baseline_by_handle",
+    "store_baseline",
+    "clear_baseline_store",
+    "create_error_response",
 ]
