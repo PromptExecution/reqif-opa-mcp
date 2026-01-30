@@ -325,3 +325,27 @@
   - Decision logs are immutable audit trail - never modify without governance approval
   - Quality checks: mypy --strict and ruff check both pass
 ---
+## 2026-01-31 - US-017
+- Implemented agent runner interface documentation
+- Files changed:
+  - Created docs/agent-runner-interface.md (451 lines)
+  - Modified ralph/prd.json (marked US-017 as passes: true)
+- **Learnings for future iterations:**
+  - Agent runner interface defines contract between agents and OPA evaluation system
+  - Core principle: Agents produce facts; OPA makes decisions (agents NEVER decide pass/fail)
+  - Function signature: run_agent(subtype, artifacts_path, requirement_context) -> Result[dict, Exception]
+  - Input parameters:
+    - subtype: requirement subtype string (e.g., "CYBER", "ACCESS_CONTROL")
+    - artifacts_path: path to build artifacts, source code, or analysis targets
+    - requirement_context: dict with target metadata (repo, commit, build) and optional fields
+  - Output: Success(facts_object) conforming to facts/1 schema, or Failure(exception)
+  - Facts object structure: target, facts (flexible), evidence[], agent (name, version, rubric_hint)
+  - Evidence types: code_span (source code), artifact (SBOM/files), log, metric
+  - Evidence URIs use stable patterns: repo://, artifact://, file://, http://
+  - Error handling: NEVER throw exceptions, always return Result[dict, Exception]
+  - Agents MUST: extract facts, provide evidence, return facts/1 conformant output, handle errors gracefully
+  - Agents MUST NOT: make pass/fail decisions, return compliance status, interpret policy requirements
+  - Documentation includes two complete examples: CYBER agent and ACCESS_CONTROL agent
+  - Integration workflow: CI queries requirements → agent runner → agent extracts facts → OPA evaluates → SARIF reports
+  - Quality checks: mypy --strict and ruff check both pass (no Python code, documentation only)
+---
