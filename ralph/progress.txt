@@ -184,3 +184,18 @@
   - Type hints: use list[str] | None for optional list parameters (Python 3.10+)
   - Quality checks: mypy --strict and ruff check both pass
 ---
+
+## 2026-01-30 - US-010
+- Implemented deterministic ordering for query results
+- Files changed:
+  - Modified reqif_mcp/server.py (added sorted() call in reqif_query function)
+  - Modified ralph/prd.json (marked US-010 as passes: true)
+- **Learnings for future iterations:**
+  - Deterministic ordering achieved by sorting filtered_requirements by uid (ascending) before pagination
+  - Sort applied after all filters but before pagination to ensure consistent subsets with offset
+  - Python sorted() with key=lambda pattern: sorted(list, key=lambda item: item.get("uid", ""))
+  - Empty string default for missing uid ensures consistent sorting even for malformed records
+  - Sort position in query flow: retrieve → filter by subtypes → filter by status → sort → paginate
+  - Same query with same filters now guaranteed to return results in same order
+  - Quality checks: mypy --strict and ruff check both pass
+---
