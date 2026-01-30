@@ -345,8 +345,8 @@
         "Typecheck passes"
       ],
       "priority": 21,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented as part of US-020 via _extract_evidence_locations() function"
     },
     {
       "id": "US-022",
@@ -360,8 +360,8 @@
         "Typecheck passes"
       ],
       "priority": 22,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented as part of US-020 in create_sarif_result() function"
     },
     {
       "id": "US-023",

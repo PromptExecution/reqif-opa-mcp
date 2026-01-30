@@ -419,3 +419,18 @@
   - Helper function _construct_result_message() builds human-readable message from decision.reasons[] or criteria[]
   - Quality checks: mypy --strict and ruff check both pass
 ---
+## 2026-01-31 - US-021 and US-022
+- US-021 and US-022 already implemented as part of US-020
+- No additional files changed
+- **Learnings for future iterations:**
+  - US-021 (evidence locations) was naturally implemented in _extract_evidence_locations() function during US-020
+  - Function extracts evidence from facts.evidence[] array
+  - Filters for type=code_span entries only
+  - Maps to SARIF physicalLocation with artifactLocation.uri and region (startLine, endLine)
+  - Multiple evidence items produce multiple locations via loop and list append
+  - US-022 (property bag) was naturally implemented in create_sarif_result() function during US-020
+  - Property bag includes all required fields: requirement_uid, requirement_key, subtypes[], policy_baseline_version, opa_policy_hash, agent_version, evaluation_id, timestamp
+  - Optional fields added conditionally: triage=needed, opa_score, opa_confidence, target_repo, target_commit
+  - This demonstrates that well-designed implementations often satisfy multiple related user stories simultaneously
+  - Quality checks: mypy --strict and ruff check both pass (no code changes needed)
+---
