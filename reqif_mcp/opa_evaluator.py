@@ -15,6 +15,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from jsonschema import Draft202012Validator, ValidationError
 from returns.result import Failure, Result, Success
 
 
@@ -72,6 +73,98 @@ def compose_opa_input(
             "context": context if context is not None else {},
         }
         return Success(opa_input)
+    except Exception as e:
+        return Failure(e)
+
+
+def validate_opa_output(
+    decision: dict[str, Any], schema_path: str | Path | None = None
+) -> Result[dict[str, Any], Exception]:
+    """
+    Validate OPA decision output against OPA output schema.
+
+    Checks that:
+    - Required fields (status, criteria, reasons, policy) are present
+    - Status is a valid enum value
+    - Score and confidence are in range [0.0, 1.0]
+    - Policy provenance has required fields (bundle, revision, hash)
+
+    Args:
+        decision: OPA decision output dict to validate
+        schema_path: Path to OPA output schema (defaults to schemas/opa-output.schema.json)
+
+    Returns:
+        Result containing validated decision dict or Exception if validation fails
+    """
+    try:
+        # Load schema
+        if schema_path is None:
+            # Default to schemas/opa-output.schema.json relative to this module
+            module_dir = Path(__file__).parent
+            schema_path = module_dir.parent / "schemas" / "opa-output.schema.json"
+        else:
+            schema_path = Path(schema_path)
+
+        if not schema_path.exists():
+            return Failure(ValueError(f"OPA output schema not found: {schema_path}"))
+
+        with open(schema_path, "r") as f:
+            schema = json.load(f)
+
+        # Validate against schema
+        validator = Draft202012Validator(schema)
+        try:
+            validator.validate(decision)
+        except ValidationError as e:
+            # Convert jsonschema ValidationError to ValueError with clear message
+            error_path = ".".join(str(p) for p in e.path) if e.path else "root"
+            return Failure(
+                ValueError(
+                    f"OPA output validation failed at {error_path}: {e.message}"
+                )
+            )
+
+        # Additional manual checks for critical fields
+        # Check status enum (schema should catch this, but be explicit)
+        status = decision.get("status")
+        valid_statuses = {
+            "pass",
+            "fail",
+            "conditional_pass",
+            "inconclusive",
+            "not_applicable",
+            "blocked",
+            "waived",
+        }
+        if status not in valid_statuses:
+            return Failure(
+                ValueError(
+                    f"Invalid OPA status: {status}. Must be one of: {', '.join(sorted(valid_statuses))}"
+                )
+            )
+
+        # Check required top-level fields
+        required_fields = ["status", "criteria", "reasons", "policy"]
+        for field in required_fields:
+            if field not in decision:
+                return Failure(
+                    ValueError(f"OPA output missing required field: {field}")
+                )
+
+        # Check policy provenance fields
+        policy = decision.get("policy", {})
+        policy_required = ["bundle", "revision", "hash"]
+        for field in policy_required:
+            if field not in policy:
+                return Failure(
+                    ValueError(
+                        f"OPA output policy provenance missing required field: {field}"
+                    )
+                )
+
+        return Success(decision)
+    except json.JSONDecodeError as e:
+        return Failure(ValueError(f"Invalid JSON in OPA output schema: {e}"))
     except Exception as e:
         return Failure(e)
 
@@ -164,6 +257,11 @@ def evaluate_with_opa(
         decision = output["result"][0]["expressions"][0].get("value")
         if decision is None:
             return Failure(ValueError("OPA output expression missing 'value' field"))
+
+        # Validate decision output against schema
+        validation_result = validate_opa_output(decision)
+        if isinstance(validation_result, Failure):
+            return validation_result
 
         return Success(decision)
     except subprocess.TimeoutExpired:

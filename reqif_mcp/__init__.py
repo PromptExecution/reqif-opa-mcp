@@ -8,6 +8,7 @@ from reqif_mcp.opa_evaluator import (
     evaluate_requirement,
     evaluate_with_opa,
     load_bundle_manifest,
+    validate_opa_output,
 )
 from reqif_mcp.server import (
     clear_baseline_store,
@@ -46,4 +47,5 @@ __all__ = [
     "compose_opa_input",
     "evaluate_with_opa",
     "evaluate_requirement",
+    "validate_opa_output",
 ]

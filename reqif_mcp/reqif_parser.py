@@ -118,13 +118,10 @@ def parse_reqif_xml(xml_input: str | Path) -> Result[ReqIFData, Exception]:
 def _parse_header(root: ET.Element) -> Result[ReqIFHeader, Exception]:
     """Parse REQ-IF-HEADER section."""
     try:
-        # First, try to find the REQ-IF-HEADER element using the ReqIF namespace
-        header_elem = root.find(".//reqif:REQ-IF-HEADER", REQIF_NS)
+        # Find the REQ-IF-HEADER element
+        header_elem = root.find(".//REQ-IF-HEADER")
         if header_elem is None:
-            # Fallback: try without namespace
-            header_elem = root.find(".//REQ-IF-HEADER")
-            if header_elem is None:
-                return Failure(ValueError("REQ-IF-HEADER element not found"))
+            return Failure(ValueError("REQ-IF-HEADER element not found"))
 
         identifier = header_elem.get("IDENTIFIER", "")
         title_elem = header_elem.find(".//TITLE")
