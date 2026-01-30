@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reqif-opa-mcp.example.org/schemas/opa-input.schema.json",
+  "title": "OPA Evaluation Input",
+  "description": "Input schema for OPA policy evaluation. Contains requirement record, agent facts, and evaluation context.",
+  "type": "object",
+  "required": ["requirement", "facts", "context"],
+  "properties": {
+    "requirement": {
+      "type": "object",
+      "description": "The requirement record being evaluated. Must conform to reqif-mcp/1 schema.",
+      "required": ["uid", "key", "subtypes", "status", "policy_baseline", "rubrics", "text"],
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Unique identifier for the requirement (uuid, ulid, or reqif identifier)"
+        },
+        "key": {
+          "type": "string",
+          "description": "Human-readable requirement key (e.g., CYBER-AC-001)"
+        },
+        "subtypes": {
+          "type": "array",
+          "description": "Classification subtypes for the requirement",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "obsolete", "draft"],
+          "description": "Lifecycle status of the requirement"
+        },
+        "policy_baseline": {
+          "type": "object",
+          "description": "Policy baseline provenance",
+          "required": ["id", "version", "hash"],
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "Policy baseline identifier"
+            },
+            "version": {
+              "type": "string",
+              "description": "Policy baseline version"
+            },
+            "hash": {
+              "type": "string",
+              "description": "Policy baseline content hash"
+            }
+          }
+        },
+        "rubrics": {
+          "type": "array",
+          "description": "OPA rubric references for evaluation",
+          "items": {
+            "type": "object",
+            "required": ["engine", "bundle", "package", "rule"],
+            "properties": {
+              "engine": {
+                "type": "string",
+                "description": "Policy evaluation engine (e.g., opa)"
+              },
+              "bundle": {
+                "type": "string",
+                "description": "OPA bundle identifier"
+              },
+              "package": {
+                "type": "string",
+                "description": "OPA package path"
+              },
+              "rule": {
+                "type": "string",
+                "description": "OPA rule name"
+              }
+            }
+          }
+        },
+        "text": {
+          "type": "string",
+          "description": "Requirement statement text"
+        },
+        "attrs": {
+          "type": "object",
+          "description": "Additional attributes (flexible schema)",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "facts": {
+      "type": "object",
+      "description": "Agent facts object. Must conform to facts/1 schema.",
+      "required": ["target", "facts", "evidence", "agent"],
+      "properties": {
+        "target": {
+          "type": "object",
+          "description": "The target that was analyzed",
+          "required": ["repo", "commit", "build"],
+          "properties": {
+            "repo": {
+              "type": "string",
+              "description": "Repository identifier or URL"
+            },
+            "commit": {
+              "type": "string",
+              "description": "Git commit SHA or identifier"
+            },
+            "build": {
+              "type": "string",
+              "description": "Build identifier or number"
+            }
+          },
+          "additionalProperties": true
+        },
+        "facts": {
+          "type": "object",
+          "description": "Extracted facts (flexible schema)",
+          "additionalProperties": true
+        },
+        "evidence": {
+          "type": "array",
+          "description": "Evidence pointers",
+          "items": {
+            "type": "object",
+            "required": ["type", "uri"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["code_span", "artifact", "log", "metric"]
+              },
+              "uri": {
+                "type": "string",
+                "description": "Stable, addressable URI for the evidence"
+              },
+              "startLine": {
+                "type": "integer",
+                "description": "Start line for code_span evidence"
+              },
+              "endLine": {
+                "type": "integer",
+                "description": "End line for code_span evidence"
+              },
+              "hash": {
+                "type": "string",
+                "description": "Content hash for artifact evidence"
+              }
+            }
+          }
+        },
+        "agent": {
+          "type": "object",
+          "description": "Agent metadata",
+          "required": ["name", "version"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Agent name"
+            },
+            "version": {
+              "type": "string",
+              "description": "Agent version"
+            },
+            "rubric_hint": {
+              "type": "string",
+              "description": "Suggested OPA package for evaluation"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "context": {
+      "type": "object",
+      "description": "Evaluation context (flexible schema for additional parameters)",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

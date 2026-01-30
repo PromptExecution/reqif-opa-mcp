@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reqif-opa-mcp.org/schemas/requirement-record/v1",
+  "title": "Requirement Record",
+  "description": "Canonical requirement record schema for reqif-mcp/1",
+  "type": "object",
+  "required": ["uid", "key", "subtypes", "status", "policy_baseline", "rubrics", "text"],
+  "properties": {
+    "uid": {
+      "type": "string",
+      "description": "Unique identifier (UUID, ULID, or ReqIF identifier)",
+      "pattern": "^[a-zA-Z0-9_-]+$"
+    },
+    "key": {
+      "type": "string",
+      "description": "Human-readable requirement key (e.g., CYBER-AC-001)",
+      "pattern": "^[A-Z0-9_-]+$"
+    },
+    "subtypes": {
+      "type": "array",
+      "description": "Array of requirement subtypes for categorization",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z_]+$"
+      },
+      "minItems": 1
+    },
+    "status": {
+      "type": "string",
+      "description": "Requirement lifecycle status",
+      "enum": ["active", "obsolete", "draft"]
+    },
+    "policy_baseline": {
+      "type": "object",
+      "description": "Policy baseline reference",
+      "required": ["id", "version", "hash"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Policy baseline identifier"
+        },
+        "version": {
+          "type": "string",
+          "description": "Policy baseline version (e.g., 2026.01)"
+        },
+        "hash": {
+          "type": "string",
+          "description": "Content hash of policy baseline for integrity verification"
+        }
+      }
+    },
+    "rubrics": {
+      "type": "array",
+      "description": "Array of evaluation rubrics",
+      "items": {
+        "type": "object",
+        "required": ["engine", "bundle", "package", "rule"],
+        "properties": {
+          "engine": {
+            "type": "string",
+            "description": "Policy evaluation engine (e.g., opa)"
+          },
+          "bundle": {
+            "type": "string",
+            "description": "OPA bundle identifier (e.g., org/cyber)"
+          },
+          "package": {
+            "type": "string",
+            "description": "OPA package path (e.g., cyber.access_control.v3)"
+          },
+          "rule": {
+            "type": "string",
+            "description": "OPA rule name to evaluate (e.g., decision)"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "text": {
+      "type": "string",
+      "description": "Full text of the requirement statement"
+    },
+    "attrs": {
+      "type": "object",
+      "description": "Additional attributes (flexible schema)",
+      "properties": {
+        "severity": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low", "info"]
+        },
+        "owner": {
+          "type": "string",
+          "description": "Requirement owner or responsible party"
+        },
+        "verify_method": {
+          "type": "string",
+          "enum": ["analysis", "test", "inspection", "demo"],
+          "description": "Verification method for the requirement"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

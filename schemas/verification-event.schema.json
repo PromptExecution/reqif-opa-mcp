@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/verification-event.schema.json",
+  "title": "Verification Event Schema",
+  "description": "Schema for verification events that record compliance gate evaluations. Verification events establish traceability between requirements, evaluations, and evidence artifacts.",
+  "type": "object",
+  "required": [
+    "event_id",
+    "requirement_uid",
+    "target",
+    "decision",
+    "timestamp",
+    "sarif_ref"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "description": "Unique identifier for this verification event (ULID or UUID). Used for correlation across evidence store artifacts.",
+      "minLength": 1
+    },
+    "requirement_uid": {
+      "type": "string",
+      "description": "UID of the requirement being verified. Must match a requirement record uid from the baseline.",
+      "minLength": 1
+    },
+    "target": {
+      "type": "object",
+      "description": "Target artifact that was evaluated (repository commit, build artifact, etc.)",
+      "required": [
+        "repo",
+        "commit",
+        "build"
+      ],
+      "properties": {
+        "repo": {
+          "type": "string",
+          "description": "Repository identifier (e.g., org/repo, URL, or other stable identifier)"
+        },
+        "commit": {
+          "type": "string",
+          "description": "Git commit SHA or equivalent version identifier"
+        },
+        "build": {
+          "type": "string",
+          "description": "Build identifier or artifact version"
+        }
+      },
+      "additionalProperties": true
+    },
+    "decision": {
+      "type": "object",
+      "description": "Summary of the OPA policy evaluation decision",
+      "required": [
+        "status",
+        "score",
+        "confidence"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "Overall evaluation status from OPA",
+          "enum": [
+            "pass",
+            "fail",
+            "conditional_pass",
+            "inconclusive",
+            "not_applicable",
+            "blocked",
+            "waived"
+          ]
+        },
+        "score": {
+          "type": "number",
+          "description": "Numeric score from OPA evaluation (0.0 to 1.0)",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "confidence": {
+          "type": "number",
+          "description": "Confidence level in the decision (0.0 to 1.0)",
+          "minimum": 0.0,
+          "maximum": 1.0
+        }
+      },
+      "additionalProperties": true
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "ISO 8601 timestamp when the verification event occurred",
+      "format": "date-time"
+    },
+    "sarif_ref": {
+      "type": "string",
+      "description": "Reference to the SARIF artifact file for this evaluation (e.g., filename or path within evidence store)"
+    }
+  },
+  "additionalProperties": true
+}

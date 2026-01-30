@@ -32,6 +32,9 @@ MANIFEST
 *.manifest
 *.spec
 
+# Exception: Allow OPA bundle .manifest files
+!opa-bundles/**/.manifest
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
@@ -205,3 +208,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Evidence store - runtime artifacts from compliance gate evaluations
+evidence_store/

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reqif-opa-mcp.example.org/schemas/agent-facts/v1",
+  "title": "Agent Facts Schema",
+  "description": "Schema for agent fact output conforming to facts/1 data contract. Agents produce facts and evidence about build artifacts without making compliance decisions.",
+  "type": "object",
+  "required": ["target", "facts", "evidence", "agent"],
+  "properties": {
+    "target": {
+      "type": "object",
+      "description": "Target information identifying what was analyzed",
+      "required": ["repo", "commit", "build"],
+      "properties": {
+        "repo": {
+          "type": "string",
+          "description": "Repository identifier or URL"
+        },
+        "commit": {
+          "type": "string",
+          "description": "Git commit SHA or revision identifier"
+        },
+        "build": {
+          "type": "string",
+          "description": "Build identifier or artifact version"
+        }
+      },
+      "additionalProperties": true
+    },
+    "facts": {
+      "type": "object",
+      "description": "Extracted facts from analysis. Keys are fact names, values are fact data. Flexible schema allows arbitrary fact types.",
+      "additionalProperties": true
+    },
+    "evidence": {
+      "type": "array",
+      "description": "Evidence pointers supporting the facts",
+      "items": {
+        "type": "object",
+        "required": ["type", "uri"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Type of evidence",
+            "enum": ["code_span", "artifact", "log", "metric"]
+          },
+          "uri": {
+            "type": "string",
+            "description": "Addressable URI for the evidence (e.g., repo://, artifact://, file://)"
+          },
+          "startLine": {
+            "type": "integer",
+            "description": "Start line number for code spans",
+            "minimum": 1
+          },
+          "endLine": {
+            "type": "integer",
+            "description": "End line number for code spans",
+            "minimum": 1
+          },
+          "hash": {
+            "type": "string",
+            "description": "Content hash (SHA256) for artifacts"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "agent": {
+      "type": "object",
+      "description": "Agent metadata for provenance and traceability",
+      "required": ["name", "version"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Agent name identifier"
+        },
+        "version": {
+          "type": "string",
+          "description": "Agent version (semver recommended)"
+        },
+        "rubric_hint": {
+          "type": "string",
+          "description": "Optional hint for which OPA rubric package to use (e.g., cyber.access_control.v3)"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

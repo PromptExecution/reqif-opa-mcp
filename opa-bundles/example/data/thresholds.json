@@ -1,0 +1,59 @@
+{
+  "cyber": {
+    "crypto": {
+      "min_key_length": 2048,
+      "approved_algorithms": [
+        "AES-256",
+        "RSA-4096",
+        "ECDSA-P256",
+        "SHA-256",
+        "SHA-384",
+        "SHA-512"
+      ],
+      "deprecated_algorithms": [
+        "MD5",
+        "SHA-1",
+        "DES",
+        "3DES",
+        "RC4"
+      ]
+    },
+    "input_validation": {
+      "max_missing_validations": 0,
+      "required_validation_types": [
+        "type_check",
+        "range_check",
+        "format_check",
+        "sanitization"
+      ]
+    },
+    "access_control": {
+      "min_authentication_factors": 2,
+      "session_timeout_minutes": 30,
+      "max_failed_login_attempts": 3
+    }
+  },
+  "scoring": {
+    "weights": {
+      "crypto": 3,
+      "input_validation": 4,
+      "access_control": 5,
+      "audit_logging": 2
+    },
+    "thresholds": {
+      "pass": 0.9,
+      "conditional_pass": 0.7,
+      "fail": 0.0
+    }
+  },
+  "confidence": {
+    "evidence_weight": {
+      "code_span": 1.0,
+      "artifact": 0.8,
+      "log": 0.6,
+      "metric": 0.5
+    },
+    "min_evidence_for_high_confidence": 5,
+    "min_evidence_for_medium_confidence": 3
+  }
+}
