@@ -665,3 +665,30 @@
     3. Added calculate_score() function to handle division by zero when all criteria are N/A
   - Quality checks: mypy --strict and ruff check both pass (no Python code changes)
 ---
+## 2026-01-31 - US-033
+- Implemented comprehensive query correctness unit tests for requirement query filtering
+- Files changed:
+  - Created tests/test_query_correctness.py (7 comprehensive test functions, 500+ lines)
+  - Modified reqif_mcp/server.py (extracted query_requirements() function for testability)
+  - Modified ralph/prd.json (marked US-033 as passes: true)
+- **Learnings for future iterations:**
+  - Unit tests for MCP tools require extracting core logic into separate testable functions
+  - FastMCP @mcp.tool() decorator wraps functions making them not directly callable in tests
+  - Solution: Extract core logic into separate function (e.g., query_requirements()) that MCP tool wraps
+  - Test pattern: import and call the extracted core function directly, not the decorated tool
+  - All 7 test cases implemented covering all acceptance criteria:
+    1. test_filter_by_single_subtype: verify filtering by single subtype returns correct subset
+    2. test_filter_by_multiple_subtypes_and_logic: verify AND logic for multiple subtypes
+    3. test_filter_by_baseline: verify baseline filtering isolates requirements by handle
+    4. test_pagination_with_limit_and_offset: verify pagination consistency across pages
+    5. test_query_with_no_matches: verify empty results return empty array (not error)
+    6. test_filter_by_status: verify status filtering (active/obsolete/draft)
+    7. test_deterministic_ordering_across_queries: verify same query returns same order
+  - Test data organization: create minimal test requirements inline within each test function
+  - Test cleanup: use _baseline_store.clear() after each test to prevent cross-contamination
+  - Deterministic ordering: query results sorted by uid (ascending) ensures consistent pagination
+  - AND logic for subtypes: all(subtype in req.get("subtypes", []) for subtype in subtypes)
+  - Empty results intentionally return empty array with total_count=0, not error response
+  - Quality checks: mypy --strict and ruff check both pass
+  - All 7 pytest tests pass in 1.66s
+---
