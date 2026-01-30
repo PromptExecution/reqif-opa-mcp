@@ -5,10 +5,8 @@ Tests cover:
 - Deterministic UID generation from ReqIF identifiers
 - Stable UID across multiple normalization runs
 - Valid identifiers passing through unchanged
-- Hash-based UID generation for invalid identifiers
+- UUID v5-based UID generation for invalid identifiers
 """
-
-import pytest
 
 from reqif_mcp.normalization import _extract_or_generate_uid
 

@@ -4,7 +4,6 @@ ReqIF Normalization Module
 Normalizes ReqIF data into canonical requirement records conforming to reqif-mcp/1 schema.
 """
 
-import hashlib
 import uuid
 from typing import Any
 
@@ -146,23 +145,24 @@ def _extract_or_generate_uid(identifier: str) -> str:
     Extract UID from ReqIF identifier or generate deterministic UID.
 
     For deterministic normalization, when the identifier is not alphanumeric,
-    generates a stable UUID v5 from the identifier using SHA-256 hash.
+    generates a stable UUID v5 from the identifier using a custom namespace.
     This ensures the same ReqIF identifier always produces the same UID.
 
     Args:
         identifier: ReqIF identifier
 
     Returns:
-        UID string (stable identifier or deterministic UUID)
+        UID string (stable identifier or deterministic UUID v5)
     """
     # If identifier looks like a valid UID (alphanumeric with hyphens/underscores), use it
     if identifier and all(c.isalnum() or c in "_-" for c in identifier):
         return identifier
 
-    # Generate deterministic UUID from identifier using SHA-256 hash
+    # Generate deterministic UUID v5 from identifier
+    # Using a custom namespace for ReqIF identifiers to ensure uniqueness
     # This ensures the same identifier always produces the same UID
-    hash_digest = hashlib.sha256(identifier.encode("utf-8")).digest()[:16]
-    deterministic_uuid = uuid.UUID(bytes=hash_digest, version=5)
+    reqif_namespace = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")  # Custom namespace for ReqIF
+    deterministic_uuid = uuid.uuid5(reqif_namespace, identifier)
     return str(deterministic_uuid)
 
 
