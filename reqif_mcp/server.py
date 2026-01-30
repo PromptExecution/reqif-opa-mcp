@@ -238,6 +238,70 @@ def reqif_query(
 
 
 @mcp.tool()
+def reqif_export_req_set(
+    handle: str,
+    subtypes: list[str] | None = None,
+    status: str | None = None,
+    format: str = "json",
+) -> dict[str, Any]:
+    """Export requirement subset in specified format.
+
+    Args:
+        handle: Baseline identifier (handle from reqif.parse)
+        subtypes: Filter by subtypes (AND logic - all must match). Optional.
+        status: Filter by status (active/obsolete/draft). Optional.
+        format: Output format (currently only 'json' is supported). Default: 'json'.
+
+    Returns:
+        Dictionary with export field containing JSON string on success, or error field on failure
+    """
+    # Validate format parameter
+    if format != "json":
+        return create_error_response(ValueError(f"Invalid format '{format}'. Only 'json' is currently supported"))
+
+    # Retrieve requirement records by handle
+    baseline_result = get_baseline_by_handle(handle)
+    if isinstance(baseline_result, Failure):
+        return create_error_response(baseline_result.failure())
+
+    requirements = baseline_result.unwrap()
+
+    # Apply filters (same logic as reqif_query)
+    filtered_requirements = requirements
+
+    # Filter by subtypes (AND logic - all subtypes must be present)
+    if subtypes:
+        filtered_requirements = [
+            req for req in filtered_requirements
+            if all(subtype in req.get("subtypes", []) for subtype in subtypes)
+        ]
+
+    # Filter by status
+    if status:
+        # Validate status value
+        if status not in ("active", "obsolete", "draft"):
+            return create_error_response(ValueError(f"Invalid status '{status}'. Must be 'active', 'obsolete', or 'draft'"))
+        filtered_requirements = [
+            req for req in filtered_requirements
+            if req.get("status") == status
+        ]
+
+    # Sort by uid (ascending) for deterministic ordering
+    filtered_requirements = sorted(filtered_requirements, key=lambda req: req.get("uid", ""))
+
+    # Export as JSON string
+    try:
+        export_json = json.dumps(filtered_requirements, ensure_ascii=False, indent=2)
+        return {
+            "export": export_json,
+            "format": format,
+            "requirement_count": len(filtered_requirements),
+        }
+    except Exception as e:
+        return create_error_response(Exception(f"Failed to serialize requirements to JSON: {e}"))
+
+
+@mcp.tool()
 def reqif_write_verification(
     event: dict[str, Any],
     log_file: str = "evidence_store/events/verifications.jsonl",
