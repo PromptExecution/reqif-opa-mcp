@@ -3,6 +3,12 @@
 __version__ = "0.1.0"
 
 from reqif_mcp.normalization import normalize_reqif
+from reqif_mcp.opa_evaluator import (
+    compose_opa_input,
+    evaluate_requirement,
+    evaluate_with_opa,
+    load_bundle_manifest,
+)
 from reqif_mcp.server import (
     clear_baseline_store,
     create_error_response,
@@ -36,4 +42,8 @@ __all__ = [
     "store_baseline",
     "clear_baseline_store",
     "create_error_response",
+    "load_bundle_manifest",
+    "compose_opa_input",
+    "evaluate_with_opa",
+    "evaluate_requirement",
 ]
