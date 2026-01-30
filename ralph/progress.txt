@@ -216,3 +216,25 @@
   - Agents NEVER decide pass/fail - they only produce facts and evidence; OPA makes decisions
   - Quality checks: mypy --strict and ruff check both pass (no Python code added, schema only)
 ---
+
+## 2026-01-30 - US-012
+- Implemented OPA evaluation input and output JSON schemas for policy evaluation
+- Files changed:
+  - Created schemas/opa-input.schema.json
+  - Created schemas/opa-output.schema.json
+- **Learnings for future iterations:**
+  - OPA input schema defines three required top-level fields: requirement, facts, context
+  - Input requirement field embeds full reqif-mcp/1 requirement record structure
+  - Input facts field embeds full facts/1 agent facts structure
+  - Input context field has flexible schema (additionalProperties: true) for evaluation-specific parameters
+  - OPA output schema defines comprehensive decision structure with seven status values
+  - Status enum: pass, fail, conditional_pass, inconclusive, not_applicable, blocked, waived
+  - Output includes score (0.0-1.0) and confidence (0.0-1.0) numeric fields for quantitative analysis
+  - Criteria array breaks down decision into individual criterion evaluations (id, status, weight, message, evidence[])
+  - Criterion status uses simplified enum: pass, fail, na (not applicable)
+  - Criterion evidence field contains indices into facts.evidence[] array for traceability
+  - Reasons array provides human-readable explanation strings for the overall decision
+  - Policy provenance required: bundle (identifier), revision (version), hash (content hash for verification)
+  - These schemas establish the contract between agent facts, OPA evaluation, and SARIF reporting
+  - Quality checks: mypy --strict and ruff check both pass (no Python code added, schema only)
+---
