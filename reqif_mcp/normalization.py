@@ -4,11 +4,11 @@ ReqIF Normalization Module
 Normalizes ReqIF data into canonical requirement records conforming to reqif-mcp/1 schema.
 """
 
+import uuid
 import hashlib
 from typing import Any
 
 from returns.result import Failure, Result, Success
-from ulid import ULID
 
 from reqif_mcp.reqif_parser import AttributeDefinition, ReqIFData, SpecObject, SpecType
 
@@ -75,7 +75,7 @@ def _normalize_spec_object(
         Result containing normalized requirement record or Exception
     """
     try:
-        # Extract uid from ReqIF identifier or generate ULID
+        # Extract uid from ReqIF identifier or generate deterministic UID
         uid = _extract_or_generate_uid(spec_obj["identifier"])
 
         # Build attributes map from ReqIF attributes
@@ -143,20 +143,28 @@ def _normalize_spec_object(
 
 def _extract_or_generate_uid(identifier: str) -> str:
     """
-    Extract UID from ReqIF identifier or generate stable ULID.
+    Extract UID from ReqIF identifier or generate deterministic UID.
+
+    For deterministic normalization, when the identifier is not alphanumeric,
+    generates a stable UUID v5 from the identifier using a custom namespace.
+    This ensures the same ReqIF identifier always produces the same UID.
 
     Args:
         identifier: ReqIF identifier
 
     Returns:
-        UID string (stable identifier or ULID)
+        UID string (stable identifier or deterministic UUID v5)
     """
     # If identifier looks like a valid UID (alphanumeric with hyphens/underscores), use it
     if identifier and all(c.isalnum() or c in "_-" for c in identifier):
         return identifier
 
-    # Otherwise, generate a ULID (stable, sortable, unique)
-    return str(ULID())
+    # Generate deterministic UUID v5 from identifier
+    # Using a custom namespace for ReqIF identifiers to ensure uniqueness
+    # This ensures the same identifier always produces the same UID
+    reqif_namespace = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")  # Custom namespace for ReqIF
+    deterministic_uuid = uuid.uuid5(reqif_namespace, identifier)
+    return str(deterministic_uuid)
 
 
 def _extract_subtypes(
