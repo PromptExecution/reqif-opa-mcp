@@ -350,7 +350,27 @@ Parquet (partitioned by date/subtype/baseline) for analytics
 
 SARIF artifacts saved verbatim
 
-(Arrow/Parquet are implementation choices; contract is “tabular + immutable events”.)
+(Arrow/Parquet are implementation choices; contract is "tabular + immutable events".)
+
+9.1 Log rotation strategy (decision logs)
+
+Decision logs are written to evidence_store/decision_logs/decisions.jsonl as an append-only JSONL file.
+
+Log rotation strategy (for production deployment):
+
+Manual rotation: Use external log rotation tools (logrotate, systemd, or cloud-native solutions)
+
+Rotation schedule: Daily or when log file exceeds size threshold (e.g., 100MB)
+
+Compressed archives: After rotation, compress with gzip or similar (decisions.jsonl.2026-01-31.gz)
+
+Retention policy: Keep compressed logs for audit period (e.g., 7 years for compliance)
+
+Naming convention: decisions.jsonl.<date>.gz for archived logs
+
+For MVP: Decision logs are written to single file without automatic rotation. Production deployments should configure external rotation tools.
+
+Decision logs are immutable audit trail - never modify or delete logs without governance approval.
 
 10) Test specification (must be implemented)
 10.1 Unit tests

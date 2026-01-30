@@ -282,3 +282,46 @@
   - Error cases handled: bundle not found, manifest missing, OPA binary not found, timeout, invalid JSON output
   - Quality checks: mypy --strict and ruff check both pass
 ---
+## 2026-01-31 - US-015
+- Implemented OPA output schema validation
+- Files changed:
+  - Modified reqif_mcp/opa_evaluator.py (added validate_opa_output function, integrated into evaluate_with_opa)
+  - Modified reqif_mcp/__init__.py (exported validate_opa_output)
+  - Modified reqif_mcp/reqif_parser.py (fixed REQIF_NS undefined variable bug)
+  - Modified pyproject.toml (fixed duplicate [project] header)
+- **Learnings for future iterations:**
+  - OPA output validation uses jsonschema Draft202012Validator for schema validation
+  - validate_opa_output() function validates against schemas/opa-output.schema.json by default
+  - Validation checks: status enum, required fields (status, criteria, reasons, policy), policy provenance fields
+  - Invalid OPA output returns Failure(ValueError(...)) with clear message, never crashes
+  - Validation integrated into evaluate_with_opa() before returning decision to caller
+  - Schema path resolution: uses Path(__file__).parent.parent / "schemas" / "opa-output.schema.json"
+  - jsonschema ValidationError converted to ValueError with clear field path and message
+  - Manual checks supplement schema validation for critical fields like status enum
+  - pyproject.toml formatting: no indentation, flat structure (was incorrectly nested)
+  - Quality checks: mypy --strict and ruff check both pass
+---
+
+## 2026-01-31 - US-016
+- Implemented OPA decision logging with JSONL append-only audit trail
+- Files changed:
+  - Created reqif_mcp/decision_logger.py (decision logging module with ULID)
+  - Modified reqif_mcp/opa_evaluator.py (integrated decision logging into evaluate_requirement)
+  - Modified reqif_mcp/__init__.py (exported decision logging functions)
+  - Created evidence_store/ directory structure (decision_logs/, events/, sarif/)
+  - Modified README.md (added log rotation strategy documentation)
+  - Modified ralph/prd.json (marked US-016 as passes: true)
+- **Learnings for future iterations:**
+  - Decision logging module provides three functions: create_decision_log_entry, append_decision_log, log_evaluation
+  - DecisionLogEntry TypedDict structure: evaluation_id, timestamp, requirement, facts, context, decision, policy
+  - Evaluation IDs use ULID for unique, sortable identifiers (same as baseline handles)
+  - Decision logs written to evidence_store/decision_logs/decisions.jsonl by default (append-only JSONL)
+  - Log file path configurable via log_file_path parameter
+  - Decision logging integrated into evaluate_requirement with enable_decision_logging flag (defaults to True)
+  - Log failures are non-fatal - print warning and continue evaluation (don't fail the gate)
+  - Evidence store directory structure: evidence_store/{decision_logs/, events/, sarif/}
+  - Log rotation strategy documented in README section 9.1 (external tools like logrotate for production)
+  - MVP: single file without automatic rotation; production should use external rotation
+  - Decision logs are immutable audit trail - never modify without governance approval
+  - Quality checks: mypy --strict and ruff check both pass
+---

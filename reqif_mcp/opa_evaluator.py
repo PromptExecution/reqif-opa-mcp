@@ -6,6 +6,7 @@ This module provides functions to:
 - Compose OPA input JSON from requirement + facts + context
 - Invoke OPA evaluation via subprocess
 - Parse and return OPA decision output
+- Log decision outputs for audit trail
 
 All functions use Rust-style Result pattern for error handling.
 """
@@ -17,6 +18,8 @@ from typing import Any
 
 from jsonschema import Draft202012Validator, ValidationError
 from returns.result import Failure, Result, Success
+
+from reqif_mcp.decision_logger import log_evaluation
 
 
 def load_bundle_manifest(bundle_path: str | Path) -> Result[dict[str, Any], Exception]:
@@ -284,11 +287,13 @@ def evaluate_requirement(
     rule: str = "decision",
     context: dict[str, Any] | None = None,
     opa_binary: str = "opa",
+    enable_decision_logging: bool = True,
+    log_file_path: Path | str | None = None,
 ) -> Result[dict[str, Any], Exception]:
     """
     High-level function to evaluate a requirement against facts using OPA.
 
-    Composes OPA input, invokes evaluation, and returns decision output.
+    Composes OPA input, invokes evaluation, logs decision, and returns decision output.
 
     Args:
         requirement: Requirement record conforming to reqif-mcp/1 schema
@@ -298,6 +303,8 @@ def evaluate_requirement(
         rule: OPA rule name (defaults to "decision")
         context: Optional evaluation context
         opa_binary: Path to OPA binary (defaults to "opa" in PATH)
+        enable_decision_logging: Whether to write decision log (defaults to True)
+        log_file_path: Optional path to log file (defaults to evidence_store/decision_logs/decisions.jsonl)
 
     Returns:
         Result containing OPA decision output dict or Exception if evaluation fails
@@ -321,4 +328,28 @@ def evaluate_requirement(
     opa_input = input_result.unwrap()
 
     # Invoke OPA evaluation
-    return evaluate_with_opa(opa_input, bundle_path, package, rule, opa_binary)
+    eval_result = evaluate_with_opa(opa_input, bundle_path, package, rule, opa_binary)
+    if isinstance(eval_result, Failure):
+        return eval_result
+
+    decision = eval_result.unwrap()
+
+    # Log decision to audit trail (if enabled)
+    if enable_decision_logging:
+        log_result = log_evaluation(
+            requirement=requirement,
+            facts=facts,
+            decision=decision,
+            context=context,
+            log_file_path=log_file_path,
+        )
+        # Log failures are not fatal - log and continue
+        if isinstance(log_result, Failure):
+            # In production, this should use proper logging
+            # For MVP, we just continue without failing the evaluation
+            print(
+                f"Warning: Failed to write decision log: {log_result.failure()}",
+                flush=True,
+            )
+
+    return Success(decision)

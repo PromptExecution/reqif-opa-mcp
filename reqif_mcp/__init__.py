@@ -2,6 +2,12 @@
 
 __version__ = "0.1.0"
 
+from reqif_mcp.decision_logger import (
+    DecisionLogEntry,
+    append_decision_log,
+    create_decision_log_entry,
+    log_evaluation,
+)
 from reqif_mcp.normalization import normalize_reqif
 from reqif_mcp.opa_evaluator import (
     compose_opa_input,
@@ -48,4 +54,8 @@ __all__ = [
     "evaluate_with_opa",
     "evaluate_requirement",
     "validate_opa_output",
+    "create_decision_log_entry",
+    "append_decision_log",
+    "log_evaluation",
+    "DecisionLogEntry",
 ]
