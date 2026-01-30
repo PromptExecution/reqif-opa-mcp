@@ -373,3 +373,23 @@
   - Stub agent made executable with chmod +x for convenience
   - Quality checks: mypy --strict and ruff check both pass
 ---
+
+## 2026-01-31 - US-019
+- Implemented comprehensive SARIF mapping documentation
+- Files changed:
+  - Created docs/sarif-mapping.md (409 lines)
+  - Modified ralph/prd.json (marked US-019 as passes: true)
+- **Learnings for future iterations:**
+  - SARIF mapping rules document the normative transformation from OPA decisions to SARIF v2.1.0 reports
+  - OPA status to SARIF level mapping: pass→note/omit, fail→error, conditional_pass→warning, inconclusive/blocked→warning+triage, not_applicable→omit
+  - Requirement uid MUST map to rule.id for stability (not key, which may change)
+  - Evidence code_span maps to physicalLocation with artifactLocation and region (startLine, endLine)
+  - Evidence URI normalization strips repo:// prefix and uses uriBaseId (SRCROOT, BINROOT)
+  - Required property bag fields: requirement_uid, requirement_key, subtypes[], policy_baseline_version, opa_policy_hash, agent_version, evaluation_id, timestamp
+  - Optional property bag fields: triage=needed (for inconclusive/blocked), opa_score, opa_confidence, target_repo, target_commit
+  - SARIF run.tool.driver uses OPA bundle metadata: name=bundle id, version=bundle revision
+  - Result messages constructed from decision.reasons[] array, fall back to criteria messages
+  - All SARIF output MUST validate against SARIF v2.1.0 JSON schema
+  - Documentation includes three complete examples: fail→error, conditional_pass→warning, inconclusive→warning+triage
+  - Quality checks: mypy --strict and ruff check both pass (documentation only, no code changes)
+---
