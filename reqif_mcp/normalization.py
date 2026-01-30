@@ -5,6 +5,7 @@ Normalizes ReqIF data into canonical requirement records conforming to reqif-mcp
 """
 
 import uuid
+import hashlib
 from typing import Any
 
 from returns.result import Failure, Result, Success
@@ -226,8 +227,6 @@ def _compute_baseline_hash(baseline_id: str, baseline_version: str) -> str:
     Returns:
         Hash string (placeholder for MVP)
     """
-    import hashlib
-
     content = f"{baseline_id}:{baseline_version}"
     return hashlib.sha256(content.encode()).hexdigest()[:16]
 
