@@ -692,3 +692,36 @@
   - Quality checks: mypy --strict and ruff check both pass
   - All 7 pytest tests pass in 1.66s
 ---
+## 2026-01-31 - US-034
+- Implemented comprehensive SARIF mapping invariant tests
+- Files changed:
+  - Created tests/test_sarif_mapping.py (12 comprehensive test functions, 539 lines)
+  - Modified ralph/prd.json (marked US-034 as passes: true)
+- **Learnings for future iterations:**
+  - SARIF mapping tests verify normative transformation from OPA decisions to SARIF v2.1.0 reports
+  - All 12 test cases implemented covering all acceptance criteria:
+    1. test_opa_fail_status_produces_sarif_error_result: verify fail status maps to error level
+    2. test_opa_pass_status_produces_no_result: verify pass status omits result (returns None)
+    3. test_opa_conditional_pass_produces_sarif_warning_result: verify conditional_pass maps to warning level
+    4. test_rule_id_matches_requirement_uid_stable: verify rule.id uses requirement.uid for stability
+    5. test_result_locations_present_when_evidence_has_code_spans: verify evidence code_span maps to locations
+    6. test_property_bag_includes_all_required_fields: verify all required property bag fields present
+    7. test_inconclusive_status_produces_warning_with_triage_needed: verify inconclusive adds triage=needed
+    8. test_blocked_status_produces_warning_with_triage_needed: verify blocked adds triage=needed
+    9. test_not_applicable_status_produces_no_result: verify not_applicable omits result
+    10. test_status_to_level_mapping: verify complete status-to-level mapping function
+    11. test_extract_evidence_locations_filters_code_spans: verify evidence extraction filters to code_span only
+    12. test_generate_sarif_report_complete_structure: verify complete SARIF v2.1.0 report structure
+  - URI normalization in _extract_evidence_locations strips repo:// prefix and extracts path after host/org/repo
+  - URI pattern: repo://github.com/org/repo/src/api/file.py becomes api/file.py (not src/api/file.py)
+  - URI splitting: uri.split("/", 6) produces 7 parts; parts[6] contains path after repo://host/org/repo/
+  - Test assertions verified all SARIF mapping invariants per docs/sarif-mapping.md
+  - Pass and not_applicable statuses return None from create_sarif_result (omitted from SARIF output)
+  - Fail status maps to error level, conditional_pass to warning, inconclusive/blocked to warning+triage
+  - Property bag required fields: requirement_uid, requirement_key, subtypes[], policy_baseline_version, opa_policy_hash, agent_version, evaluation_id, timestamp
+  - Property bag optional fields: triage=needed (for inconclusive/blocked), opa_score, opa_confidence, target_repo, target_commit
+  - Evidence locations only include code_span type (filters out artifact, log, metric types)
+  - SARIF rule.id MUST use requirement.uid (not key) for stability across evaluations
+  - Quality checks: mypy --strict and ruff check both pass
+  - All 12 pytest tests pass in 1.57s
+---
