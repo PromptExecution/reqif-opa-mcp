@@ -4,10 +4,11 @@ ReqIF Normalization Module
 Normalizes ReqIF data into canonical requirement records conforming to reqif-mcp/1 schema.
 """
 
+import hashlib
+import uuid
 from typing import Any
 
 from returns.result import Failure, Result, Success
-from ulid import ULID
 
 from reqif_mcp.reqif_parser import AttributeDefinition, ReqIFData, SpecObject, SpecType
 
@@ -74,7 +75,7 @@ def _normalize_spec_object(
         Result containing normalized requirement record or Exception
     """
     try:
-        # Extract uid from ReqIF identifier or generate ULID
+        # Extract uid from ReqIF identifier or generate deterministic UID
         uid = _extract_or_generate_uid(spec_obj["identifier"])
 
         # Build attributes map from ReqIF attributes
@@ -142,20 +143,27 @@ def _normalize_spec_object(
 
 def _extract_or_generate_uid(identifier: str) -> str:
     """
-    Extract UID from ReqIF identifier or generate stable ULID.
+    Extract UID from ReqIF identifier or generate deterministic UID.
+
+    For deterministic normalization, when the identifier is not alphanumeric,
+    generates a stable UUID v5 from the identifier using SHA-256 hash.
+    This ensures the same ReqIF identifier always produces the same UID.
 
     Args:
         identifier: ReqIF identifier
 
     Returns:
-        UID string (stable identifier or ULID)
+        UID string (stable identifier or deterministic UUID)
     """
     # If identifier looks like a valid UID (alphanumeric with hyphens/underscores), use it
     if identifier and all(c.isalnum() or c in "_-" for c in identifier):
         return identifier
 
-    # Otherwise, generate a ULID (stable, sortable, unique)
-    return str(ULID())
+    # Generate deterministic UUID from identifier using SHA-256 hash
+    # This ensures the same identifier always produces the same UID
+    hash_digest = hashlib.sha256(identifier.encode("utf-8")).digest()[:16]
+    deterministic_uuid = uuid.UUID(bytes=hash_digest, version=5)
+    return str(deterministic_uuid)
 
 
 def _extract_subtypes(
