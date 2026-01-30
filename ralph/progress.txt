@@ -619,3 +619,24 @@
   - pytest returns exit code 0 for passed tests (1 passed, 2 skipped in 1.76s)
   - Quality checks: mypy --strict and ruff check both pass
 ---
+## 2026-01-31 - US-031
+- Implemented comprehensive ReqIF parser unit tests
+- Files changed:
+  - Created tests/test_reqif_parser.py (427 lines, 10 test functions)
+  - Modified ralph/prd.json (marked US-031 as passes: true)
+- **Learnings for future iterations:**
+  - ReqIF parser tests structure: one test file per module with descriptive function names
+  - Test naming convention: test_<action>_<scenario> (e.g., test_parse_well_formed_reqif_xml, test_reject_malformed_xml)
+  - Inline test fixtures: embed XML strings directly in test functions for clarity and maintainability
+  - Test all acceptance criteria explicitly: well-formed XML, malformed XML, invalid references, empty ReqIF
+  - Parser error testing pattern: assert isinstance(result, Failure) then validate error message content
+  - Parser success testing pattern: assert isinstance(result, Success) then validate data structure
+  - Parser design philosophy: parser extracts structure, doesn't validate referential integrity (that's normalization layer's job)
+  - Invalid references test: parser succeeds even with non-existent SpecType refs (caught later in validation)
+  - Empty ReqIF test: valid structure with zero SpecObjects should parse successfully (not an error)
+  - Edge case testing: missing optional fields (COMMENT), invalid root element, missing header/content
+  - Test coverage achieved: 10 test cases covering all acceptance criteria plus additional edge cases
+  - Quality checks: mypy --strict and ruff check both pass
+  - All 10 pytest tests pass in 1.60s
+  - Ruff auto-fix pattern: use `uv run ruff check --fix` to automatically remove unnecessary f-string prefixes
+---
