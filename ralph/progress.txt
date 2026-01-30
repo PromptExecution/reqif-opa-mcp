@@ -199,3 +199,20 @@
   - Same query with same filters now guaranteed to return results in same order
   - Quality checks: mypy --strict and ruff check both pass
 ---
+## 2026-01-30 - US-011
+- Implemented agent facts JSON schema for facts/1 data contract
+- Files changed:
+  - Created schemas/agent-facts.schema.json
+- **Learnings for future iterations:**
+  - Agent facts schema defines standard output format for all agents
+  - Schema includes four required top-level fields: target, facts, evidence[], agent
+  - Target structure captures what was analyzed: repo, commit, build (all required, extensible with additionalProperties)
+  - Facts object has flexible schema (additionalProperties: true) to allow arbitrary fact types from different agents
+  - Evidence array supports multiple evidence types: code_span, artifact, log, metric
+  - Evidence items require type and uri; optional fields include startLine, endLine (for code spans), hash (for artifacts)
+  - Agent metadata requires name and version; optional rubric_hint field suggests which OPA package to use
+  - Schema uses JSON Schema 2020-12 specification with $schema, $id, title, description
+  - Evidence URI pattern: use stable addressable URIs like repo://, artifact://, file://
+  - Agents NEVER decide pass/fail - they only produce facts and evidence; OPA makes decisions
+  - Quality checks: mypy --strict and ruff check both pass (no Python code added, schema only)
+---
