@@ -520,3 +520,28 @@
   - Concurrent writes: MVP single-threaded, production needs locking or unique filenames
   - Quality checks: mypy --strict and ruff check both pass (no Python code, documentation only)
 ---
+## 2026-01-31 - US-027
+- Implemented reqif.write_verification tool for writing verification events to evidence store
+- Files changed:
+  - Modified reqif_mcp/validation.py (added validate_verification_event and validate_verification_event_from_schema_file functions)
+  - Modified reqif_mcp/server.py (added reqif_write_verification tool, added datetime, json, Path imports)
+  - Modified reqif_mcp/__init__.py (exported new validation functions)
+- **Learnings for future iterations:**
+  - reqif.write_verification tool registered with @mcp.tool() decorator
+  - Tool accepts event object conforming to verification-event.schema.json
+  - Auto-generates event_id using ULID if not provided: str(ULID())
+  - Auto-generates timestamp using ISO 8601 format if not provided: datetime.now(timezone.utc).isoformat()
+  - Validates event against verification event schema before writing
+  - Validation uses validate_verification_event_from_schema_file() function
+  - Schema path resolution: Path(__file__).parent.parent / "schemas" / "verification-event.schema.json"
+  - Appends event as JSONL to evidence_store/events/verifications.jsonl by default
+  - JSONL append pattern: json.dumps(event, ensure_ascii=False) + "\n"
+  - Creates parent directories if needed: log_path.parent.mkdir(parents=True, exist_ok=True)
+  - Returns success dict with event_id and absolute log file path
+  - Returns error dict via create_error_response on validation or write failure
+  - Configurable log file path via log_file parameter (defaults to evidence_store/events/verifications.jsonl)
+  - Concurrent writes: MVP uses basic append-only file writes (single-threaded); production needs locking or unique filenames
+  - Verification event validation reuses same pattern as requirement record validation
+  - validate_verification_event() and validate_verification_event_from_schema_file() follow same design as requirement validation functions
+  - Quality checks: mypy --strict and ruff check both pass
+---
