@@ -475,3 +475,24 @@
   - Functions handle both dict objects and file paths for flexibility
   - Quality checks: mypy --strict and ruff check both pass
 ---
+## 2026-01-31 - US-025
+- Implemented verification event JSON schema for traceability
+- Files changed:
+  - Created schemas/verification-event.schema.json
+  - Modified ralph/prd.json (marked US-025 as passes: true)
+- **Learnings for future iterations:**
+  - Verification event schema defines standard format for recording compliance gate evaluations
+  - Schema includes six required top-level fields: event_id, requirement_uid, target, decision, timestamp, sarif_ref
+  - Event ID uses ULID or UUID for unique, sortable identifiers (same pattern as evaluation IDs and baseline handles)
+  - Requirement UID links event to specific requirement record from baseline
+  - Target structure captures what was evaluated: repo, commit, build (extensible with additionalProperties)
+  - Decision object summarizes OPA evaluation: status (enum), score (0.0-1.0), confidence (0.0-1.0)
+  - Decision status enum matches OPA output: pass, fail, conditional_pass, inconclusive, not_applicable, blocked, waived
+  - Timestamp uses ISO 8601 format (date-time) for standardized temporal ordering
+  - SARIF ref links event to SARIF artifact file (filename or path within evidence store)
+  - Schema follows same pattern as other schemas: JSON Schema 2020-12 specification
+  - All schemas include $schema, $id, title, description, type, required, properties
+  - Verification events establish traceability chain: requirement → evaluation → decision → SARIF artifact
+  - Events will be written to evidence_store/events/verifications.jsonl (append-only JSONL format)
+  - Quality checks: mypy --strict and ruff check both pass (no Python code, schema only)
+---
