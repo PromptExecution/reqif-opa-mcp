@@ -33,9 +33,7 @@ decision := result if {
 	criteria := [crypto_criterion, input_validation_criterion]
 
 	# Calculate overall score (weighted average of passing criteria)
-	total_weight := sum([c.weight | c := criteria[_]])
-	passed_weight := sum([c.weight | c := criteria[_]; c.status == "pass"])
-	score := passed_weight / total_weight
+	score := calculate_score(criteria)
 
 	# Determine overall status
 	status := determine_status(criteria)
@@ -149,6 +147,21 @@ input_status(has_issues) := "pass" if not has_issues
 input_message(false, _) := "All inputs properly validated"
 input_message(true, count) := sprintf("Found %d input validation issues", [count])
 
+# Calculate overall score (weighted average of passing criteria)
+calculate_score(criteria) := 0.0 if {
+	# When all criteria are N/A (total_weight = 0), return 0.0
+	total_weight := sum([c.weight | c := criteria[_]])
+	total_weight == 0
+}
+
+calculate_score(criteria) := score if {
+	# Normal case: calculate weighted average
+	total_weight := sum([c.weight | c := criteria[_]])
+	passed_weight := sum([c.weight | c := criteria[_]; c.status == "pass"])
+	total_weight > 0
+	score := passed_weight / total_weight
+}
+
 # Determine overall status from criteria
 determine_status(criteria) := "pass" if {
 	# All criteria either pass or not applicable
@@ -174,15 +187,26 @@ determine_status(criteria) := "inconclusive" if {
 }
 
 # Calculate confidence based on evidence availability
-calculate_confidence(facts) := confidence if {
-	evidence_count := count(facts.evidence)
+# Simple heuristic: more evidence = higher confidence
+# 0 evidence = 0.3 confidence, 1-2 = 0.6, 3-4 = 0.8, 5+ = 1.0
+calculate_confidence(facts) := 0.3 if {
+	count(facts.evidence) == 0
+}
 
-	# Simple heuristic: more evidence = higher confidence
-	# 0 evidence = 0.3 confidence, 1+ = 0.6, 3+ = 0.8, 5+ = 1.0
-	confidence := 0.3 if evidence_count == 0
-	confidence := 0.6 if evidence_count >= 1; evidence_count < 3
-	confidence := 0.8 if evidence_count >= 3; evidence_count < 5
-	confidence := 1.0 if evidence_count >= 5
+calculate_confidence(facts) := 0.6 if {
+	evidence_count := count(facts.evidence)
+	evidence_count >= 1
+	evidence_count < 3
+}
+
+calculate_confidence(facts) := 0.8 if {
+	evidence_count := count(facts.evidence)
+	evidence_count >= 3
+	evidence_count < 5
+}
+
+calculate_confidence(facts) := 1.0 if {
+	count(facts.evidence) >= 5
 }
 
 # Default confidence if none of the above match
@@ -196,7 +220,3 @@ generate_reasons(criteria) := reasons if {
 	reasons := array.concat(failed, passed)
 }
 
-# Helper function to convert string to lowercase
-lower(s) := lower_s if {
-	lower_s := strings.lower(s)
-}
