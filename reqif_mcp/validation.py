@@ -267,7 +267,7 @@ def validate_requirement_integrity(
                                     "record_uid": uid,
                                 }
                             )
-                        elif not rubric[field]:
+                        elif isinstance(rubric[field], str) and not rubric[field].strip():
                             errors.append(
                                 {
                                     "severity": "error",
