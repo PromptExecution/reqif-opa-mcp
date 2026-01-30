@@ -640,3 +640,28 @@
   - All 10 pytest tests pass in 1.60s
   - Ruff auto-fix pattern: use `uv run ruff check --fix` to automatically remove unnecessary f-string prefixes
 ---
+## 2026-01-31 - US-032
+- Implemented OPA policy bundle tests for cyber.access_control.v3 package
+- Files changed:
+  - Created opa-bundles/example/tests/cyber_test.rego (10 comprehensive test cases)
+  - Modified opa-bundles/example/policy/cyber.rego (fixed syntax issues and added calculate_score function)
+  - Modified ralph/prd.json (marked US-032 as passes: true)
+- **Learnings for future iterations:**
+  - OPA test structure: test files use package declaration matching policy package
+  - Test naming convention: test_<scenario>_<expected_outcome> (e.g., test_crypto_requirement_with_crypto_library_passes)
+  - Golden test inputs: embed full input structure (requirement, facts, context) inline in test using `with input as {...}`
+  - Test assertions: use equality checks (==) to assert decision fields (status, score, confidence, criteria)
+  - Array filtering in tests: use `[c | c := result.criteria[_]; c.id == "CYBER-CRYPTO-1"][0]` to extract specific criterion
+  - Coverage requirements: test pass, fail, not_applicable, edge cases (missing facts, empty evidence), boundary conditions (confidence thresholds)
+  - OPA test execution: `opa test <bundle-path> -v` runs all tests with verbose output
+  - Rego syntax for conditional assignment: use separate rule definitions, not inline `if` in assignment (e.g., `score := 0.0 if {...}` is invalid)
+  - Rego multi-value rules: define multiple rules with same head and different bodies for pattern matching (e.g., calculate_score with different conditions)
+  - Division by zero handling: when all criteria are N/A (total_weight = 0), need separate rule to return 0.0 score
+  - Rego v1 built-in functions: `lower()` is built-in, no need for custom wrapper function
+  - Test results: 10/10 tests pass covering all acceptance criteria
+  - Policy fixes made during test implementation:
+    1. Fixed calculate_confidence() to use separate rules instead of multiple assignments in one body
+    2. Removed custom lower() function wrapper (use built-in lower() directly)
+    3. Added calculate_score() function to handle division by zero when all criteria are N/A
+  - Quality checks: mypy --strict and ruff check both pass (no Python code changes)
+---
