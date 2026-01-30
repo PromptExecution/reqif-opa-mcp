@@ -16,6 +16,11 @@ from reqif_mcp.opa_evaluator import (
     load_bundle_manifest,
     validate_opa_output,
 )
+from reqif_mcp.sarif_producer import (
+    create_sarif_result,
+    create_sarif_rule,
+    generate_sarif_report,
+)
 from reqif_mcp.server import (
     clear_baseline_store,
     create_error_response,
@@ -58,4 +63,7 @@ __all__ = [
     "append_decision_log",
     "log_evaluation",
     "DecisionLogEntry",
+    "create_sarif_rule",
+    "create_sarif_result",
+    "generate_sarif_report",
 ]
