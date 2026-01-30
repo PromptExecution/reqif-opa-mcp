@@ -171,15 +171,17 @@ def reqif_validate(
     }
 
 
-@mcp.tool()
-def reqif_query(
+def query_requirements(
     handle: str,
     subtypes: list[str] | None = None,
     status: str | None = None,
     limit: int | None = None,
     offset: int = 0,
 ) -> dict[str, Any]:
-    """Query requirements with filtering and pagination.
+    """Query requirements with filtering and pagination (core logic).
+
+    This function implements the core query logic and is directly testable.
+    The reqif_query MCP tool wraps this function.
 
     Args:
         handle: Baseline identifier (handle from reqif.parse)
@@ -231,10 +233,33 @@ def reqif_query(
 
     return {
         "requirements": paginated_requirements,
-        "total_count": len(filtered_requirements),
+        "total_count": len(paginated_requirements),
         "returned_count": len(paginated_requirements),
         "offset": offset,
     }
+
+
+@mcp.tool()
+def reqif_query(
+    handle: str,
+    subtypes: list[str] | None = None,
+    status: str | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """Query requirements with filtering and pagination.
+
+    Args:
+        handle: Baseline identifier (handle from reqif.parse)
+        subtypes: Filter by subtypes (AND logic - all must match). Optional.
+        status: Filter by status (active/obsolete/draft). Optional.
+        limit: Maximum number of results to return. Optional (no limit if None).
+        offset: Number of results to skip (for pagination). Default: 0.
+
+    Returns:
+        Dictionary with requirements array on success, or error field on failure
+    """
+    return query_requirements(handle, subtypes, status, limit, offset)
 
 
 @mcp.tool()
