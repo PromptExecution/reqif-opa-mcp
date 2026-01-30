@@ -393,3 +393,29 @@
   - Documentation includes three complete examples: fail→error, conditional_pass→warning, inconclusive→warning+triage
   - Quality checks: mypy --strict and ruff check both pass (documentation only, no code changes)
 ---
+## 2026-01-31 - US-020
+- Implemented SARIF producer module for compliance gate reporting
+- Files changed:
+  - Created reqif_mcp/sarif_producer.py (325 lines)
+  - Modified reqif_mcp/__init__.py (exported SARIF producer functions)
+  - Modified ralph/prd.json (marked US-020 as passes: true)
+- **Learnings for future iterations:**
+  - SARIF producer module provides three main functions:
+    1. create_sarif_rule(requirement) → creates SARIF rule from requirement record
+    2. create_sarif_result(requirement, decision, facts, evaluation_id) → creates SARIF result from OPA decision
+    3. generate_sarif_report(requirement, decision, facts, evaluation_id) → creates complete SARIF v2.1.0 report
+  - OPA status to SARIF level mapping: fail→error, conditional_pass→warning, inconclusive/blocked→warning+triage, pass/not_applicable→omit
+  - SARIF rule.id MUST use requirement.uid for stability (not key which may change)
+  - Evidence code_span mapped to physicalLocation with artifactLocation.uri and region (startLine, endLine)
+  - Evidence URI normalization: strip repo://host/org/repo/ prefix and use relative path with uriBaseId=SRCROOT
+  - Required property bag fields: requirement_uid, requirement_key, subtypes[], policy_baseline_version, opa_policy_hash, agent_version, evaluation_id, timestamp
+  - Optional property bag fields: triage=needed (for inconclusive/blocked), opa_score, opa_confidence, target_repo, target_commit
+  - Tool driver metadata populated from OPA bundle: name=bundle id, version=bundle revision
+  - Result message construction: use decision.reasons[] first, fall back to criteria messages, append score and confidence
+  - SARIF run object structure includes: $schema, version, runs[] with tool, results[], properties
+  - generate_sarif_report() auto-generates ULID evaluation_id if not provided
+  - Helper function _map_status_to_level() returns None for pass/not_applicable to omit results
+  - Helper function _extract_evidence_locations() filters evidence by type=code_span and maps to SARIF locations
+  - Helper function _construct_result_message() builds human-readable message from decision.reasons[] or criteria[]
+  - Quality checks: mypy --strict and ruff check both pass
+---
