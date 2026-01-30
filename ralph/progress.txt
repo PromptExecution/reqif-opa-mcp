@@ -545,3 +545,46 @@
   - validate_verification_event() and validate_verification_event_from_schema_file() follow same design as requirement validation functions
   - Quality checks: mypy --strict and ruff check both pass
 ---
+
+## 2026-01-31 - US-028
+- Implemented reqif.export_req_set tool for exporting requirement subsets in JSON format
+- Files changed:
+  - Modified reqif_mcp/server.py (added reqif_export_req_set tool function)
+  - Modified ralph/prd.json (marked US-028 as passes: true)
+- **Learnings for future iterations:**
+  - reqif.export_req_set tool registered with @mcp.tool() decorator
+  - Tool signature: reqif_export_req_set(handle, subtypes, status, format) -> dict
+  - Tool accepts same query filters as reqif.query (subtypes[], status) for consistency
+  - Format parameter validates against supported formats (currently only 'json')
+  - Export uses same filtering logic as reqif.query for consistency:
+    1. Filter by subtypes (AND logic - all must match)
+    2. Filter by status (active/obsolete/draft)
+    3. Sort by uid (ascending) for deterministic ordering
+  - JSON export uses json.dumps() with ensure_ascii=False and indent=2 for pretty-printed output
+  - Returns export as JSON string (not dict) to allow agents to consume directly
+  - Return structure: {export: json_string, format: "json", requirement_count: count}
+  - Deterministic ordering ensures same query produces same output across invocations
+  - Error handling: format validation, baseline not found, invalid status, JSON serialization failures
+  - Future extensibility: format parameter allows adding CSV, YAML, or other formats later
+  - Quality checks: mypy --strict and ruff check both pass
+---
+---
+
+## 2026-01-31 - US-029
+- Implemented versioned MCP resources for baseline and requirement access
+- Files changed:
+  - Modified reqif_mcp/server.py (added get_baseline_metadata and get_requirement_by_uid resource functions)
+  - Modified ralph/prd.json (marked US-029 as passes: true)
+- **Learnings for future iterations:**
+  - MCP resources registered with @mcp.resource() decorator using URI template pattern
+  - Resource URI template syntax: @mcp.resource("reqif://baseline/{baseline_id}")
+  - Dynamic URI placeholders become function parameters (baseline_id: str, requirement_uid: str)
+  - Resources are read-only endpoints that return JSON data
+  - Resource reqif://baseline/{id} returns baseline metadata: id, version, hash, requirement_count, handle
+  - Baseline metadata extracted from first requirement's policy_baseline field (all requirements share same baseline)
+  - Resource reqif://requirement/{uid} searches all baselines for matching requirement UID
+  - 404 errors implemented by raising ValueError (FastMCP converts to appropriate MCP error response)
+  - Error message format: "Baseline not found: {baseline_id}" or "Requirement not found: {requirement_uid}"
+  - Resources follow FastMCP 3.0 conventions with type hints and docstrings
+  - Resources access _baseline_store directly for cross-baseline requirement lookups
+  - Quality checks: mypy --strict and ruff check both pass
