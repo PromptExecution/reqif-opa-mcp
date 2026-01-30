@@ -1,0 +1,16 @@
+[project]
+name = "reqif-mcp"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.10"
+dependencies = [
+    "jsonschema>=4.26.0",
+    "returns>=0.26.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.1",
+    "ruff>=0.14.14",
+    "types-jsonschema>=4.26.0.20260109",
+]
