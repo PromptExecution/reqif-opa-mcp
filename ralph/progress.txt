@@ -238,3 +238,26 @@
   - These schemas establish the contract between agent facts, OPA evaluation, and SARIF reporting
   - Quality checks: mypy --strict and ruff check both pass (no Python code added, schema only)
 ---
+## 2026-01-30 - US-013
+- Implemented OPA bundle template structure with example policy for CYBER subtype
+- Files changed:
+  - Created opa-bundles/example/policy/cyber.rego (261 lines)
+  - Created opa-bundles/example/data/thresholds.json (example lookup table)
+  - Created opa-bundles/example/.manifest (bundle metadata)
+  - Modified .gitignore (allowed .manifest files in opa-bundles/)
+- **Learnings for future iterations:**
+  - OPA bundle structure: policy/ directory for .rego files, data/ directory for JSON data files, .manifest file for metadata
+  - Rego policy package structure: package cyber.access_control.v3 (corresponds to rubric package in requirement records)
+  - OPA input structure: input.requirement (full requirement record), input.facts (full agent facts), input.context (flexible)
+  - OPA output structure: decision object with status (enum: pass/fail/conditional_pass/inconclusive/not_applicable/blocked/waived), score (0.0-1.0), confidence (0.0-1.0), criteria[], reasons[], policy provenance
+  - Criteria array: each criterion has id, status (pass/fail/na), weight, message, evidence[] (indices into facts.evidence[])
+  - Policy evaluation pattern: evaluate multiple criteria, aggregate results, determine overall status, calculate confidence
+  - Status determination: pass if no failures + at least one pass, fail if any criterion failed, not_applicable if all criteria na, inconclusive otherwise
+  - Confidence calculation heuristic: based on evidence count (0=0.3, 1-2=0.6, 3-4=0.8, 5+=1.0)
+  - Data files provide lookup tables: thresholds.json includes crypto settings, input validation rules, access control parameters, scoring weights
+  - Bundle .manifest format: JSON with revision, roots[] (package roots), metadata (bundle id, description, authors, subtypes)
+  - Gitignore issue: *.manifest pattern blocked OPA .manifest files - added exception rule !opa-bundles/**/.manifest
+  - Rego built-in functions: strings.lower() for case-insensitive matching, contains() for substring search, count() for array length, object.get() for safe field access
+  - Policy uses default decision rule for when no specific rules match (returns inconclusive status)
+  - Quality checks: mypy --strict and ruff check both pass (no Python code added, only Rego and JSON)
+---
