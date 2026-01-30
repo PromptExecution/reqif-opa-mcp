@@ -152,3 +152,18 @@
   - Unwrap Success/Failure values with .unwrap() and .failure() methods
   - Quality checks: mypy --strict and ruff check both pass
 ---
+## 2026-01-30 - US-008
+- Implemented reqif.validate tool in FastMCP server
+- Files changed:
+  - Modified reqif_mcp/server.py (added reqif_validate tool function and import)
+- **Learnings for future iterations:**
+  - FastMCP tool pattern established: @mcp.tool() decorator with descriptive function name
+  - Tool function signature: reqif_validate(handle: str, mode: str = "basic") -> dict[str, Any]
+  - Mode parameter validation: check for valid values ("basic" or "strict") before processing
+  - Error handling pattern: use get_baseline_by_handle() and check isinstance(result, Failure)
+  - Validation function: validate_requirement_integrity(requirements, mode) from validation module
+  - Return structured validation report: {valid, errors[], warnings[], mode, requirement_count}
+  - Import pattern: add validate_requirement_integrity import to existing imports
+  - Quality checks: mypy --strict and ruff check both pass
+---
+
