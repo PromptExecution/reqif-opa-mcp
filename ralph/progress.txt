@@ -434,3 +434,19 @@
   - This demonstrates that well-designed implementations often satisfy multiple related user stories simultaneously
   - Quality checks: mypy --strict and ruff check both pass (no code changes needed)
 ---
+## 2026-01-31 - US-023
+- Implemented SARIF file writer function
+- Files changed:
+  - Modified reqif_mcp/sarif_producer.py (added write_sarif_file function)
+  - Modified reqif_mcp/__init__.py (exported write_sarif_file)
+  - Modified ralph/prd.json (marked US-023 as passes: true)
+- **Learnings for future iterations:**
+  - write_sarif_file(sarif_object, output_path) writes SARIF JSON to file
+  - Function signature accepts str or Path for output_path parameter
+  - Uses Path.parent.mkdir(parents=True, exist_ok=True) to create parent directories
+  - Writes pretty-printed JSON: json.dump() with indent=2 and ensure_ascii=False
+  - Returns Result[str, Exception] with absolute file path on success
+  - Uses try/except to catch all exceptions and return Failure(e)
+  - Path.absolute() provides full path for clarity in return value
+  - Quality checks: mypy --strict and ruff check both pass
+---
