@@ -113,3 +113,22 @@
   - Quality checks: mypy --strict and ruff check both pass
 ---
 
+## 2026-01-30 - US-006
+- Implemented FastMCP 3.0 server scaffold with HTTP and STDIO transport support
+- Files changed:
+  - Created reqif_mcp/server.py (FastMCP server module)
+  - Created reqif_mcp/__main__.py (CLI entry point)
+  - Modified reqif_mcp/__init__.py (exported server functions)
+  - Modified pyproject.toml (added fastmcp>=0.4.0 dependency)
+  - Modified uv.lock (updated dependencies)
+- **Learnings for future iterations:**
+  - FastMCP server initialization: `mcp = FastMCP("reqif-mcp", version="0.1.0")`
+  - In-memory baseline store implemented as module-level dict: `_baseline_store: dict[str, list[dict[str, Any]]]`
+  - Server supports both HTTP (0.0.0.0:8000) and STDIO transports via run_server(transport="http"|"stdio")
+  - CLI entry point via __main__.py allows running server with: `python -m reqif_mcp [--http] [--host HOST] [--port PORT]`
+  - Structured error responses use create_error_response(error) -> {error: {message, type}}
+  - Baseline store provides three functions: get_baseline_by_handle (returns Result), store_baseline, clear_baseline_store
+  - Tools will be registered with @mcp.tool() decorator (placeholder added for future stories)
+  - Server scaffold is ready for tool implementation in US-007 and beyond
+  - Quality checks: mypy --strict and ruff check both pass
+---
