@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reqif-opa-mcp.example.org/schemas/opa-output.schema.json",
+  "title": "OPA Evaluation Output",
+  "description": "Output schema for OPA policy evaluation decisions. Provides structured compliance status with criteria breakdown and policy provenance.",
+  "type": "object",
+  "required": ["status", "score", "confidence", "criteria", "reasons", "policy"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "conditional_pass",
+        "inconclusive",
+        "not_applicable",
+        "blocked",
+        "waived"
+      ],
+      "description": "Overall evaluation status"
+    },
+    "score": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Numeric score from 0.0 (complete failure) to 1.0 (complete pass)"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Confidence level in the evaluation from 0.0 (low confidence) to 1.0 (high confidence)"
+    },
+    "criteria": {
+      "type": "array",
+      "description": "Individual criterion evaluations",
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "weight", "message"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Criterion identifier (e.g., AC-1, AC-2)"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pass", "fail", "na"],
+            "description": "Status for this criterion"
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Weight of this criterion in overall evaluation"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable message explaining the criterion result"
+          },
+          "evidence": {
+            "type": "array",
+            "description": "Indices into facts.evidence[] array that support this criterion",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "reasons": {
+      "type": "array",
+      "description": "Human-readable reasons explaining the overall decision",
+      "items": {
+        "type": "string"
+      }
+    },
+    "policy": {
+      "type": "object",
+      "description": "Policy provenance for reproducibility",
+      "required": ["bundle", "revision", "hash"],
+      "properties": {
+        "bundle": {
+          "type": "string",
+          "description": "OPA bundle identifier"
+        },
+        "revision": {
+          "type": "string",
+          "description": "Bundle revision or version"
+        },
+        "hash": {
+          "type": "string",
+          "description": "Bundle content hash for verification"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}
