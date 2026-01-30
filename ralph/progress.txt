@@ -450,3 +450,28 @@
   - Path.absolute() provides full path for clarity in return value
   - Quality checks: mypy --strict and ruff check both pass
 ---
+## 2026-01-31 - US-024
+- Implemented SARIF schema validator module
+- Files changed:
+  - Created reqif_mcp/sarif_validator.py (SARIF validation module)
+  - Downloaded schemas/sarif-schema-2.1.0.json (official SARIF v2.1.0 schema from OASIS)
+  - Modified reqif_mcp/__init__.py (exported SARIF validator functions)
+- **Learnings for future iterations:**
+  - SARIF validator module provides four main functions:
+    1. load_sarif_schema(schema_path) → loads SARIF schema from file (defaults to bundled schema)
+    2. validate_sarif(sarif_object, schema) → validates SARIF object against schema
+    3. validate_sarif_from_schema_file(sarif_object, schema_path) → convenience function
+    4. validate_sarif_file(sarif_file_path, schema) → validates SARIF file from filesystem
+  - Official SARIF 2.1.0 schema downloaded from GitHub: https://github.com/oasis-tcs/sarif-spec/blob/main/sarif-2.1/schema/sarif-schema-2.1.0.json
+  - SARIF schema size: 111KB (comprehensive validation rules)
+  - Validator uses jsonschema Draft7Validator (SARIF 2.1.0 uses JSON Schema Draft 7)
+  - Validation errors include JSON path, message, and value for detailed troubleshooting
+  - SARIFValidationResult class structure: valid (bool), errors (list[SARIFValidationErrorDetail])
+  - SARIFValidationErrorDetail class structure: path (str), message (str), value (Any)
+  - JSON path construction: use error.absolute_path to build "$." prefixed path (e.g., "$.runs[0].results[1].message")
+  - All validation functions return Result[T, Exception] for consistent error handling
+  - Validation errors from jsonschema are collected via validator.iter_errors() iterator
+  - Bundled schema path resolution: Path(__file__).parent.parent / "schemas" / "sarif-schema-2.1.0.json"
+  - Functions handle both dict objects and file paths for flexibility
+  - Quality checks: mypy --strict and ruff check both pass
+---
