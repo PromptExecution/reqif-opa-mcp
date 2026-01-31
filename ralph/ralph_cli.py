@@ -3,12 +3,22 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
+import sys
 from importlib import metadata
-from typing import Sequence
+from pathlib import Path
+from typing import Sequence, cast
+
+from returns.result import Failure, Success
+
+from ralph.config import RalphConfig, load_config
+from ralph.executors import AmpExecutor, ClaudeExecutor, CodexExecutor, ToolExecutor
 
 
 VALID_TOOLS = ("amp", "claude", "codex")
+PACKAGE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = PACKAGE_DIR.parent
+PROMPT_FILE = PROJECT_ROOT / "prompt.md"
+CLAUDE_PROMPT_FILE = PROJECT_ROOT / "CLAUDE.md"
 
 
 def _positive_int(value: str) -> int:
@@ -33,9 +43,8 @@ def _get_version() -> str:
         return "0.0.0-dev"
 
 
-@dataclass(frozen=True)
-class RalphCliArgs:
-    """Parsed CLI arguments."""
+class RalphCliArgs(argparse.Namespace):
+    """Typed namespace wrapper for CLI arguments."""
 
     tool: str
     max_iterations: int
@@ -78,15 +87,40 @@ def parse_args(argv: Sequence[str] | None = None) -> RalphCliArgs:
 
     parser = build_parser()
     namespace = parser.parse_args(argv)
-    return RalphCliArgs(tool=namespace.tool, max_iterations=namespace.max_iterations)
+    return cast(RalphCliArgs, namespace)
+
+
+def _build_executor(tool: str, config: RalphConfig) -> ToolExecutor:
+    """Construct the executor for the requested tool."""
+
+    match tool:
+        case "amp":
+            return AmpExecutor(prompt_path=PROMPT_FILE, working_dir=PROJECT_ROOT)
+        case "claude":
+            return ClaudeExecutor(prompt_path=CLAUDE_PROMPT_FILE, working_dir=PROJECT_ROOT)
+        case "codex":
+            return CodexExecutor(config=config, working_dir=PROJECT_ROOT)
+    raise ValueError(f"Unsupported tool requested: {tool}")  # pragma: no cover - guarded by argparse
 
 
 def run_cli(args: RalphCliArgs) -> int:
-    """Placeholder runner that will invoke execution logic in future stories."""
+    """Load configuration and execute the selected tool."""
 
-    # Future stories will implement executor wiring; return success for now.
-    _ = args
-    return 0
+    config_result = load_config()
+    match config_result:
+        case Success(config):
+            pass
+        case Failure(error):  # pragma: no cover - defensive guard
+            raise SystemExit(f"Configuration error: {error}")
+
+    executor = _build_executor(args.tool, config)
+    execution_result = executor.run()
+    match execution_result:
+        case Success(_):
+            return 0
+        case Failure(error):
+            print(f"Tool execution failed: {error}", file=sys.stderr)
+            return 1
 
 
 def main(argv: Sequence[str] | None = None) -> int:

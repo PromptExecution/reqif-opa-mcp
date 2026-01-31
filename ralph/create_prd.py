@@ -122,7 +122,10 @@ def main() -> None:
         ]
         
         prd = create_prd(project, branch_name, description, user_stories)
-        print(f"ℹ️  Created PRD template. Edit ralph/prd.json to add user stories.", file=sys.stderr)
+        print(
+            "ℹ️  Created PRD template. Edit ralph/prd.json to add user stories.",
+            file=sys.stderr,
+        )
     else:
         print(__doc__, file=sys.stderr)
         sys.exit(1)
