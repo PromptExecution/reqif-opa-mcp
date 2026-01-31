@@ -78,3 +78,20 @@
   - Pattern: Use `uv run python` to execute scripts with proper dependency context
 ---
 
+## 2026-01-31 - US-008
+- Implemented create_pr.py script for automatic GitHub PR creation
+- Files changed: ralph/create_pr.py (new), ralph/prd.json (updated)
+- **Learnings for future iterations:**
+  - create_pr.py automatically creates PRs when all user stories complete (`passes: true`)
+  - Usage: `uv run python ralph/create_pr.py [prd-path]` (defaults to ralph/prd.json)
+  - PR type (feat/fix/docs/chore) inferred from user story titles
+  - PR body includes completed user story summary, test results, and GitHub issue closure
+  - Script checks gh CLI availability and authentication before attempting PR creation
+  - Auto-detects default branch (main/master) using `git remote show origin`
+  - Prevents PR creation if currently on default branch (main/master)
+  - Returns PR URL on success for tracking
+  - Uses returns module for error handling, passes mypy --strict and ruff checks
+  - Error messages guide users to install gh CLI or run `gh auth login` if needed
+  - Pattern: Use subprocess.run with timeout for external command execution
+---
+
