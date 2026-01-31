@@ -42,45 +42,45 @@ Traceable verification evidence linked to requirement UID and target revision,
 Repeatable gates suitable for CI/CD.
 
 2) High-level architecture
+```mermaid
 flowchart LR
-  subgraph R["Requirements Authority"]
-    A["ReqIF MCP Server (FastMCP 3.0)"]
-    S["ReqIF raw store (immutable)"]
-    N["Normalized model + indexes (derived)"]
-    A --> S
-    A --> N
+  subgraph R["ReqIF MCP Server (FastMCP 3.0)"]
+    A["reqif_mcp.server (tools + resources)"]
+    M["In-memory baseline store (handle -> requirements)"]
+    A --> M
   end
 
-  subgraph P["Policy & Evaluation"]
-    B["OPA (policy engine)"]
-    PB["OPA Bundles (policies+data)"]
-    DL["OPA Decision Logs (audit)"]
-    B <-- bundle pull --> PB
+  subgraph P["OPA Evaluation (subprocess)"]
+    B["reqif_mcp.opa_evaluator"]
+    OPA["OPA binary"]
+    PB["OPA bundle dir (opa-bundles/...)"]
+    DL["evidence_store/decision_logs/decisions.jsonl"]
+    PB -->|bundle| OPA
+    B --> OPA
     B --> DL
   end
 
-  subgraph E["Evidence & Reporting"]
-    AR["Agent(s): subtype skill runners"]
-    SAR["SARIF Producer"]
-    EV["Evidence Store (JSONL/Arrow/Parquet)"]
+  subgraph E["SARIF + Evidence"]
+    SAR["reqif_mcp.sarif_producer"]
+    EV["evidence_store/events + sarif/"]
   end
 
-  subgraph C["CI/CD / GitOps"]
-    CI["Pipeline Job"]
-    ART["Artifacts: diff, build outputs, manifests, SBOM, test data"]
+  subgraph C["CI/CD Runner (external)"]
+    CI["Pipeline job / script"]
+    ART["Artifacts: diff, build outputs, SBOM, test data"]
+    CI --> ART
   end
 
-  CI --> ART
-  CI -->|fetch reqs| A
-  ART --> AR
-  A -->|req subset + rubric refs| AR
-  AR -->|facts JSON| B
+  CI -->|reqif.parse/query| A
+  CI -->|reqif.write_verification| A
+  ART --> AG["Agent runner (external)"]
+  AG -->|facts.json| B
   A -->|req context| B
-  B -->|decision + reasons| SAR
-  AR -->|evidence refs| SAR
+  B -->|decision| SAR
+  AG -->|evidence refs| SAR
   SAR --> EV
-  SAR --> CI
-  EV --> A
+  A --> EV
+```
 
 3) Responsibilities (strict separation)
 ReqIF MCP server (authority)
@@ -204,6 +204,8 @@ SARIF is the standard interchange for static analysis results.
 
 5) Workflows (normative)
 5.1 Policy distillation → requirements publication
+External upstream process (not implemented in this repo).
+```mermaid
 sequenceDiagram
   participant Author as Policy Authoring (source docs)
   participant Distill as Distillation Pipeline
@@ -216,14 +218,17 @@ sequenceDiagram
   Distill->>OPA: Publish OPA bundle revision (matching baseline)
   Req-->>Distill: Baseline handle + hash
   OPA-->>Distill: Bundle revision + hash
+```
 
 5.2 CI/CD evaluation gate (changeset)
+Example orchestration (outside this repo) using reqif_mcp modules.
+```mermaid
 sequenceDiagram
   participant CI as CI Job
   participant Req as ReqIF MCP Server
   participant Agent as Subtype Agent Runner
-  participant OPA as OPA
-  participant SAR as SARIF Producer
+  participant OPA as OPA Evaluator (subprocess)
+  participant SAR as SARIF Producer (module)
   participant Store as Evidence Store
 
   CI->>Req: query requirements by subtype(s) + scope
@@ -236,13 +241,17 @@ sequenceDiagram
   SAR-->>CI: sarif.json
   CI->>Store: append evaluation record + SARIF
   CI->>Req: write verification event (trace link)
+```
 
 5.3 Requirement lifecycle (supersession, obsolescence)
+Conceptual lifecycle metadata (supersession not persisted by server yet).
+```mermaid
 flowchart TD
   R1["Req(uid=U1,key=CYBER-AC-001,status=active,baseline=2026.01)"]
   R2["Req(uid=U2,key=CYBER-AC-001,status=active,baseline=2026.02)"]
   R1 -->|"supersededBy"| R2
   R1 -->|"status=obsolete"| R1
+```
 
 6) Gate criteria model (beyond pass/fail)
 

@@ -212,12 +212,21 @@ def validate_requirement_integrity(
                                 "record_uid": uid,
                             }
                         )
-                    elif not policy_baseline[field]:
+                    elif isinstance(policy_baseline[field], str) and not policy_baseline[field].strip():
                         errors.append(
                             {
                                 "severity": "error",
                                 "field": f"policy_baseline.{field}",
-                                "message": f"Empty value for required field '{field}' in policy_baseline",
+                                "message": f"Field '{field}' must be a string",
+                                "record_uid": uid,
+                            }
+                        )
+                    elif policy_baseline[field] == "":
+                        errors.append(
+                            {
+                                "severity": "error",
+                                "field": f"policy_baseline.{field}",
+                                "message": f"Empty value for required field '{field}'",
                                 "record_uid": uid,
                             }
                         )
@@ -267,12 +276,12 @@ def validate_requirement_integrity(
                                     "record_uid": uid,
                                 }
                             )
-                        elif not rubric[field]:
+                        elif isinstance(rubric[field], str) and not rubric[field].strip():
                             errors.append(
                                 {
                                     "severity": "error",
                                     "field": f"rubrics[{idx}].{field}",
-                                    "message": f"Empty value for required field '{field}' in rubric at index {idx}",
+                                    "message": f"Empty value for required field '{field}'",
                                     "record_uid": uid,
                                 }
                             )
