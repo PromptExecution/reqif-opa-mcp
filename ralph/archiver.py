@@ -117,7 +117,9 @@ def check_branch_change() -> bool:
             pass
         case _:
             write_result = _write_last_branch(current_branch)
-            return not isinstance(write_result, Failure)
+            if isinstance(write_result, Failure):
+                return False
+            return False
 
     if last_branch == current_branch:
         return False

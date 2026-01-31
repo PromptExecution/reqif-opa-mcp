@@ -187,3 +187,13 @@
   - Logging errors with exc_info prints full tracebacks to stderr
   - Startup configuration logging should include tool, iterations, and model
 ---
+
+## 2026-01-31 23:59 - US-009
+- Added pytest coverage for Ralph CLI, config, executors, file management, and archiving
+- Files changed: tests/test_ralph_cli.py (new), ralph/archiver.py (updated), reqif_mcp/normalization.py (updated), reqif_mcp/validation.py (updated), ralph/prd.json (updated)
+- **Learnings for future iterations:**
+  - Monkeypatch module-level paths to test PRD/progress behavior in temp dirs
+  - Fixed-date class helps stabilize archive folder assertions
+  - Normalization should only accept ASCII identifiers for raw UIDs
+  - Validation should report empty policy_baseline fields explicitly
+---

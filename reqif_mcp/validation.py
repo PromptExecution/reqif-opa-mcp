@@ -217,16 +217,16 @@ def validate_requirement_integrity(
                             {
                                 "severity": "error",
                                 "field": f"policy_baseline.{field}",
-                                "message": f"Field '{field}' must be a string",
+                                "message": f"Empty value for required field '{field}'",
                                 "record_uid": uid,
                             }
                         )
-                    elif policy_baseline[field] == "":
+                    elif not isinstance(policy_baseline[field], str):
                         errors.append(
                             {
                                 "severity": "error",
                                 "field": f"policy_baseline.{field}",
-                                "message": f"Empty value for required field '{field}'",
+                                "message": f"Field '{field}' must be a string",
                                 "record_uid": uid,
                             }
                         )

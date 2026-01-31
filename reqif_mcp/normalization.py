@@ -156,7 +156,7 @@ def _extract_or_generate_uid(identifier: str) -> str:
         UID string (stable identifier or deterministic UUID v5)
     """
     # If identifier looks like a valid UID (alphanumeric with hyphens/underscores), use it
-    if identifier and all(c.isalnum() or c in "_-" for c in identifier):
+    if identifier and identifier.isascii() and all(c.isalnum() or c in "_-" for c in identifier):
         return identifier
 
     # Generate deterministic UUID v5 from identifier
