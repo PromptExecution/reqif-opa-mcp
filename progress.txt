@@ -1,0 +1,14 @@
+# Ralph Progress Log
+Started: Sat Jan 31 13:52:42 AEDT 2026
+---
+## 2026-01-31 17:18 - US-002
+- Implemented check_prd.py module to prioritize local prd.json over GitHub issues
+- Files changed: ralph/check_prd.py (new), ralph/prd.json (updated)
+- **Learnings for future iterations:**
+  - Pattern: Create modular utilities in ralph/ directory for workflow steps
+  - Pattern: Use strict typing with mypy --strict for all Python modules
+  - Pattern: Return Tuple[bool, Optional[T]] for decision functions with optional data
+  - Testing: Test modules directly with `cd ralph && python module.py` for quick validation
+  - Logging: Use emoji prefixes (✅, ℹ️, ⚠️) for user-friendly console output
+  - Type safety: json.load() returns Any, so explicitly cast to Dict[str, Any] after validation
+---
