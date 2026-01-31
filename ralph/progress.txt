@@ -109,3 +109,33 @@
   - Pattern: Check local state before external APIs for better performance
 ---
 
+## 2026-01-31 - US-010
+- Created GitHub issue template for Ralph compatibility
+- Files changed: .github/ISSUE_TEMPLATE/ralph-feature.md (new)
+- **Learnings for future iterations:**
+  - GitHub issue templates use YAML frontmatter for metadata (name, about, title, labels)
+  - Template includes comprehensive documentation in HTML comments for user guidance
+  - Ralph compatibility notes embedded in template explain parsing rules and workflow
+  - User story format documented with examples: `### US-XXX: Title` with acceptance criteria
+  - Acceptance criteria use GitHub checklist format: `- [ ]` for unchecked items
+  - Template is selectable when creating new issue on GitHub (shows in dropdown)
+  - Example user stories (US-001, US-002) demonstrate proper structure
+  - Comments at bottom explain Ralph workflow: branch naming, conventional commits, auto PR creation
+  - Pattern: Keep templates user-friendly while encoding structural requirements for automation
+---
+
+## 2026-01-31 - US-011
+- Implemented log_issue_completion.py script for logging issue completion to progress.txt
+- Files changed: ralph/log_issue_completion.py (new), ralph/README.md (updated)
+- **Learnings for future iterations:**
+  - log_issue_completion.py appends completion summary when all user stories from GitHub issue are done
+  - Script reads prd.json github_issue property to get issue number and title
+  - Includes timestamp, total stories, files changed count (via git diff), PR link, branch name
+  - Uses git diff main...HEAD (or master...HEAD) to count changed files
+  - Completion log format: `## ISSUE #<number> COMPLETE - <title>` with details and `---` separator
+  - Script validates PRD has github_issue property (ensures it's from GitHub issue, not manual PRD)
+  - Exit codes: 0 for success, 1 for errors (file not found, missing github_issue, etc.)
+  - Uses returns module for error handling, passes mypy --strict and ruff checks
+  - README.md Automation Scripts section updated with log_issue_completion.py entry
+  - Pattern: Issue completion logs provide audit trail in progress.txt for historical tracking
+---
