@@ -63,3 +63,18 @@
   - All acceptance criteria met: archival steps, backlog workflow, archive management examples
 ---
 
+## 2026-01-31 - US-007
+- Implemented commit_formatter.py utility for generating conventional commit messages
+- Files changed: ralph/commit_formatter.py (new), ralph/README.md (updated), CLAUDE.md (updated)
+- **Learnings for future iterations:**
+  - commit_formatter.py automatically generates properly formatted conventional commits from prd.json
+  - Usage: `git commit -m "$(uv run python ralph/commit_formatter.py US-XXX)"`
+  - Utility infers commit type (feat/fix/docs/chore) from user story title keywords
+  - Automatically includes acceptance criteria in body, co-author footer, and GitHub issue closure
+  - Subject line capped at 72 characters with truncation if needed
+  - Uses returns module for error handling, passes mypy --strict and ruff checks
+  - README.md Automation Scripts section updated with commit_formatter.py usage
+  - CLAUDE.md updated with commit formatter utility documentation in Ralph++ section
+  - Pattern: Use `uv run python` to execute scripts with proper dependency context
+---
+
