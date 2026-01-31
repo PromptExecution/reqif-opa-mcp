@@ -50,3 +50,16 @@
   - Tested with sample issue data - correctly parsed 3 user stories with acceptance criteria
 ---
 
+## 2026-01-31 17:40 - US-005
+- Created comprehensive ralph/README.md documenting Ralph++ workflow
+- Files changed: ralph/README.md (new), ralph/check_prd.py (ruff fix)
+- **Learnings for future iterations:**
+  - README documents complete Ralph++ workflow: local prd → GitHub issues → exit
+  - Includes 11 sections: How Ralph Works, Backlog Workflow, Archive Management, Conventional Commits, PR Creation, Progress Logging, Automation Scripts, GitHub Issue Template, Troubleshooting, Quality Requirements, Exit Conditions
+  - Archive Management section includes directory structure and ls examples
+  - Backlog Workflow explains priority order: local prd.json > GitHub issues > clean exit
+  - Fixed ruff linting issues (removed unnecessary f-string prefixes in check_prd.py)
+  - Documentation now serves as comprehensive reference for developers and Claude Code
+  - All acceptance criteria met: archival steps, backlog workflow, archive management examples
+---
+
