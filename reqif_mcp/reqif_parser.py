@@ -74,12 +74,27 @@ def parse_reqif_xml(xml_input: str | Path) -> Result[ReqIFData, Exception]:
     """
     try:
         # Parse XML
-        if isinstance(xml_input, (str, Path)) and Path(xml_input).exists():
+        # Check if input is a Path object or a string that represents an existing file path
+        if isinstance(xml_input, Path):
             tree = ET.parse(xml_input)
             root = tree.getroot()
+        elif isinstance(xml_input, str):
+            # Try to determine if it's a file path or XML string
+            # XML strings start with '<', file paths don't
+            if xml_input.strip().startswith('<'):
+                # It's an XML string
+                root = ET.fromstring(xml_input)
+            else:
+                # It might be a file path
+                path = Path(xml_input)
+                if path.exists():
+                    tree = ET.parse(path)
+                    root = tree.getroot()
+                else:
+                    # Not a valid file path, try parsing as XML string
+                    root = ET.fromstring(xml_input)
         else:
-            # Assume it's an XML string
-            root = ET.fromstring(str(xml_input))
+            return Failure(ValueError(f"Invalid xml_input type: {type(xml_input)}"))
 
         # Check if root is REQ-IF element
         if not root.tag.endswith("REQ-IF"):
