@@ -27,6 +27,7 @@ from typing import Any
 
 from fastmcp import FastMCP
 from returns.result import Failure, Result, Success
+from starlette.responses import JSONResponse
 from ulid import ULID
 
 from reqif_mcp.normalization import normalize_reqif
@@ -463,15 +464,41 @@ def get_requirement_by_uid(requirement_uid: str) -> dict[str, Any]:
     raise ValueError(f"Requirement not found: {requirement_uid}")
 
 
-def run_server(transport: str = "stdio") -> None:
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request: Any) -> JSONResponse:
+    """Health check endpoint for server readiness verification.
+
+    Returns:
+        JSON response with server status, version, and MCP readiness information
+    """
+    # FastMCP 3.0 automatically handles MCP protocol initialization
+    # Tools and resources are registered via decorators
+    # We report static counts for MVP - in production, could query MCP server state
+    return JSONResponse({
+        "status": "ok",
+        "server": "reqif-mcp",
+        "version": "0.1.0",
+        "transport": "http",
+        "mcp": {
+            "ready": True,
+            "protocol_version": "2024-11-05",
+            "tools_count": 6,  # reqif.parse, validate, query, export, write_verification
+            "resources_count": 2,  # reqif://baseline/{id}, reqif://requirement/{uid}
+        }
+    })
+
+
+def run_server(transport: str = "stdio", host: str = "0.0.0.0", port: int = 8000) -> None:
     """Start the FastMCP server with specified transport.
 
     Args:
         transport: Transport mode - 'stdio' for local dev, 'http' for CI/CD
+        host: Host address for HTTP transport (default: 0.0.0.0)
+        port: Port for HTTP transport (default: 8000)
     """
     if transport == "http":
         # HTTP transport for multi-client CI usage
-        mcp.run(transport="http", host="0.0.0.0", port=8000)
+        mcp.run(transport="http", host=host, port=port)
     else:
         # STDIO transport for local development
         mcp.run(transport="stdio")

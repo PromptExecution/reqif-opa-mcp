@@ -43,12 +43,46 @@ jobs:
 
       - name: Start FastMCP server in background
         run: |
-          uv run python -m reqif_mcp --http --host 127.0.0.1 --port 8000 &
-          echo $! > mcp_server.pid
-          sleep 5
+          # Start server with log capture
+          uv run python -m reqif_mcp --http --host 127.0.0.1 --port 8000 > mcp_server.log 2>&1 &
+          SERVER_PID=$!
+          echo $SERVER_PID > mcp_server.pid
+          echo "Started server with PID: $SERVER_PID"
 
-          # Verify server is running
-          curl -f http://127.0.0.1:8000/health || (echo "Server failed to start" && cat mcp_server.log && exit 1)
+          # Wait for server to start with retry logic
+          MAX_ATTEMPTS=5
+          RETRY_DELAY=2
+          ATTEMPT=1
+
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "Health check attempt $ATTEMPT of $MAX_ATTEMPTS..."
+
+            # Check if server process is still running
+            if ! kill -0 $SERVER_PID 2>/dev/null; then
+              echo "❌ Server process died during startup"
+              echo "=== Server Log ==="
+              cat mcp_server.log
+              exit 1
+            fi
+
+            # Try health check
+            if curl -f -s http://127.0.0.1:8000/health | jq -e '.status == "ok" and .mcp.ready == true' > /dev/null 2>&1; then
+              echo "✅ Server is ready!"
+              curl -s http://127.0.0.1:8000/health | jq .
+              break
+            fi
+
+            if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+              echo "❌ Health check timeout after $MAX_ATTEMPTS attempts"
+              echo "=== Server Log ==="
+              cat mcp_server.log
+              exit 1
+            fi
+
+            echo "Server not ready, waiting ${RETRY_DELAY}s before retry..."
+            sleep $RETRY_DELAY
+            ATTEMPT=$((ATTEMPT + 1))
+          done
 
       - name: Parse ReqIF baseline
         id: parse_baseline
@@ -343,6 +377,7 @@ jobs:
             requirements.json
             agent_facts.json
             merged.sarif
+            mcp_server.log
           retention-days: 90
 
       - name: Stop FastMCP server

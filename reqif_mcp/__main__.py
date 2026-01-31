@@ -51,8 +51,9 @@ Examples:
         print(f"Starting ReqIF MCP Server with {transport.upper()} transport...", file=sys.stderr)
         if transport == "http":
             print(f"Listening on {args.host}:{args.port}", file=sys.stderr)
+            print(f"Health endpoint: http://{args.host}:{args.port}/health", file=sys.stderr)
 
-        run_server(transport=transport)
+        run_server(transport=transport, host=args.host, port=args.port)
     except KeyboardInterrupt:
         print("\nServer stopped by user", file=sys.stderr)
         sys.exit(0)
