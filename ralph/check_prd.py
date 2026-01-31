@@ -25,12 +25,12 @@ def load_prd(prd_path: Path) -> Optional[Dict[str, Any]]:
 
         # Basic validation: must have userStories array and be a dict
         if not isinstance(data, dict):
-            print(f"⚠️  Invalid prd.json: not a JSON object", file=sys.stderr)
+            print("⚠️  Invalid prd.json: not a JSON object", file=sys.stderr)
             return None
 
         prd: Dict[str, Any] = data
         if "userStories" not in prd or not isinstance(prd["userStories"], list):
-            print(f"⚠️  Invalid prd.json: missing or invalid 'userStories' field", file=sys.stderr)
+            print("⚠️  Invalid prd.json: missing or invalid 'userStories' field", file=sys.stderr)
             return None
 
         return prd
