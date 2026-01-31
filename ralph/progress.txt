@@ -34,3 +34,19 @@
   - Script outputs issue JSON to stdout for downstream processing
 ---
 
+## 2026-01-31 18:15 - US-004
+- Implemented convert_issue_to_prd.py script for converting GitHub issues to prd.json format
+- Files changed: ralph/convert_issue_to_prd.py (new)
+- **Learnings for future iterations:**
+  - Regex patterns parse user stories from multiple formats: `### US-XXX:`, `**US-XXX:**`, `## US-XXX:`
+  - Acceptance criteria extracted from checklist items `- [ ]` and `- [x]`
+  - Script merges issue body and all comments for comprehensive parsing
+  - If no explicit user stories found, creates single story from issue body
+  - Branch naming convention: `gh-issue-{number}-{title-kebab-case}`
+  - github_issue property added to prd.json for traceability (number, url, title)
+  - Script accepts input from stdin or file path argument
+  - Uses subprocess to call `gh repo view` for repository slug
+  - Type hints with mypy --strict passes, ruff linting passes
+  - Tested with sample issue data - correctly parsed 3 user stories with acceptance criteria
+---
+
