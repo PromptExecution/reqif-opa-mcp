@@ -72,7 +72,7 @@
         "Typecheck passes with mypy --strict"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

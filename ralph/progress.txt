@@ -139,3 +139,11 @@
   - README.md Automation Scripts section updated with log_issue_completion.py entry
   - Pattern: Issue completion logs provide audit trail in progress.txt for historical tracking
 ---
+## 2026-01-31 22:12 - US-004
+- Added ralph/file_manager.py with PRD/progress helpers (read_prd, get_current_branch, initialize_progress_file, append_to_progress)
+- Files changed: ralph/file_manager.py (new), ralph/prd.json (updated)
+- **Learnings for future iterations:**
+  - Use returns Result/Option types for file operations to keep error handling consistent
+  - Anchor PRD/progress paths to the ralph package directory for stable resolution
+  - append_to_progress ensures progress file exists and appends a trailing newline
+---
