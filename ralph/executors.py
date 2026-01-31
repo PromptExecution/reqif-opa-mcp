@@ -8,7 +8,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping, MutableMapping, Protocol, Sequence
+from typing import IO, Mapping, MutableMapping, Protocol, Sequence, cast
 
 from returns.result import Failure, Result, Success
 
@@ -85,6 +85,7 @@ def _run_subprocess(
     env: Mapping[str, str] | None = None,
 ) -> Result[str, ExecutorError]:
     tee_stream = _TeeToStderr()
+    stdout_stream: IO[str] = cast(IO[str], tee_stream)
     cwd_value = str(cwd) if cwd is not None else None
     env_value: MutableMapping[str, str] | None = None
     if env is not None:
@@ -93,7 +94,7 @@ def _run_subprocess(
         completed = subprocess.run(
             command,
             input=input_text,
-            stdout=tee_stream,
+            stdout=stdout_stream,
             stderr=subprocess.STDOUT,
             text=True,
             cwd=cwd_value,

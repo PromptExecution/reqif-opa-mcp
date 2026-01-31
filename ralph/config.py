@@ -6,7 +6,7 @@ import os
 import shlex
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping, Tuple, TypeAlias, cast
+from typing import Mapping, Tuple, TypeAlias
 
 from returns.result import Failure, Result, Success
 
@@ -51,7 +51,7 @@ def _parse_bool(raw_value: str) -> Result[bool, ConfigurationError]:
 def _parse_reasoning(raw_value: str) -> Result[ReasoningEffort, ConfigurationError]:
     normalized = raw_value.strip().lower()
     if normalized in _VALID_REASONING:
-        return Success(cast(ReasoningEffort, normalized))
+        return Success(normalized)
     msg = "CODEX_REASONING_EFFORT must be one of: low, medium, high"
     return Failure(ConfigurationError(msg))
 

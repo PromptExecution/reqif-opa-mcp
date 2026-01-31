@@ -8,7 +8,7 @@ from importlib import metadata
 from pathlib import Path
 from typing import Sequence, cast
 
-from returns.result import Failure, Success
+from returns.result import Failure
 
 from ralph.config import RalphConfig, load_config
 from ralph.executors import AmpExecutor, ClaudeExecutor, CodexExecutor, ToolExecutor
@@ -107,20 +107,19 @@ def run_cli(args: RalphCliArgs) -> int:
     """Load configuration and execute the selected tool."""
 
     config_result = load_config()
-    match config_result:
-        case Success(config):
-            pass
-        case Failure(error):  # pragma: no cover - defensive guard
-            raise SystemExit(f"Configuration error: {error}")
+    if isinstance(config_result, Failure):
+        error = config_result.failure()
+        print(f"Configuration error: {error}", file=sys.stderr)
+        return 1
+    config = config_result.unwrap()
 
     executor = _build_executor(args.tool, config)
     execution_result = executor.run()
-    match execution_result:
-        case Success(_):
-            return 0
-        case Failure(error):
-            print(f"Tool execution failed: {error}", file=sys.stderr)
-            return 1
+    if isinstance(execution_result, Failure):
+        error = execution_result.failure()
+        print(f"Tool execution failed: {error}", file=sys.stderr)
+        return 1
+    return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:
