@@ -177,3 +177,13 @@
   - Tooling config lives in pyproject.toml under [tool.mypy] and [tool.ruff]
   - Editable installs need explicit setuptools package lists in a flat layout
 ---
+
+## 2026-01-31 23:59 - US-008
+- Added logging helpers and wired structured logging into runner/executors
+- Files changed: ralph/logging_utils.py (new), ralph/runner.py (updated), ralph/executors.py (updated), ralph/prd.json (updated)
+- **Learnings for future iterations:**
+  - Emoji-prefixed logging keeps status signals consistent (✅/ℹ️/⚠️/❌)
+  - Chained exceptions via raise ... from ... preserve context in Result unwrapping
+  - Logging errors with exc_info prints full tracebacks to stderr
+  - Startup configuration logging should include tool, iterations, and model
+---

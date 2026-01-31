@@ -13,6 +13,7 @@ from typing import IO, Mapping, MutableMapping, Protocol, Sequence, cast
 from returns.result import Failure, Result, Success
 
 from ralph.config import RalphConfig
+from ralph.logging_utils import configure_logging, log_error
 
 Command = Sequence[str]
 
@@ -73,6 +74,7 @@ def _read_prompt(path: Path) -> Result[str, ExecutorError]:
     try:
         return Success(path.read_text(encoding="utf-8"))
     except OSError as exc:
+        log_error(configure_logging(), f"Unable to read prompt file: {path}", exc)
         detail = f"Unable to read prompt file: {path}"
         return Failure(ExecutorError(detail=detail, output=str(exc)))
 
@@ -102,6 +104,7 @@ def _run_subprocess(
             check=False,
         )
     except OSError as exc:
+        log_error(configure_logging(), f"Failed to execute {' '.join(command)}", exc)
         detail = f"Failed to execute {' '.join(command)}"
         return Failure(ExecutorError(detail=detail, command=tuple(command), output=str(exc)))
 
