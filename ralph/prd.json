@@ -125,7 +125,7 @@
         "Test with: uv run ralph --help"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

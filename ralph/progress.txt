@@ -167,3 +167,13 @@
   - Returns 0 on completion, 1 on max iterations or execution failure
   - Sleep 2 seconds between iterations to match the legacy loop pacing
 ---
+
+## 2026-01-31 23:55 - US-007
+- Wired up the uv script entry point and project tooling configuration
+- Files changed: pyproject.toml (updated), .python-version (updated), ralph/prd.json (updated)
+- **Learnings for future iterations:**
+  - ralph console script comes from [project.scripts] and requires packaging config
+  - Setting requires-python >=3.11 must align with .python-version for uv
+  - Tooling config lives in pyproject.toml under [tool.mypy] and [tool.ruff]
+  - Editable installs need explicit setuptools package lists in a flat layout
+---
