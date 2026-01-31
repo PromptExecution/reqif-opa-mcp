@@ -147,3 +147,13 @@
   - Anchor PRD/progress paths to the ralph package directory for stable resolution
   - append_to_progress ensures progress file exists and appends a trailing newline
 ---
+
+## 2026-01-31 23:25 - US-005
+- Implemented branch change detection and archival utilities in ralph/archiver.py
+- Files changed: ralph/archiver.py (new), ralph/file_manager.py (updated), ralph/prd.json (updated)
+- **Learnings for future iterations:**
+  - Branch change detection compares prd.json branchName to .last-branch
+  - Archive folder uses YYYY-MM-DD stamp with sanitized branch name
+  - Archiver copies prd.json and progress.txt into archive/ and resets progress
+  - returns Result/Option types keep file operations explicit
+---

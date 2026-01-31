@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, TypeAlias
 
-from returns.option import Nothing, Option, Some
+from returns.maybe import Maybe as Option, Nothing, Some
 from returns.result import Failure, Result, Success
 
 PrdData: TypeAlias = Dict[str, Any]
