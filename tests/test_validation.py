@@ -1,9 +1,14 @@
 """Tests for requirement record validation module."""
 
+from pathlib import Path
+
 import pytest
 from returns.result import Failure, Success
 
-from reqif_mcp.validation import validate_requirement_integrity
+from reqif_mcp.validation import (
+    validate_requirement_integrity,
+    validate_requirement_record_from_schema_file,
+)
 
 
 class TestValidateRequirementIntegrity:
@@ -198,6 +203,18 @@ class TestValidateRequirementIntegrity:
         assert len(val_result["errors"]) == 1
         assert val_result["errors"][0]["field"] == "policy_baseline.id"
         assert "Empty value" in val_result["errors"][0]["message"]
+
+    def test_non_dict_requirement_returns_failure(self):
+        """Non-dict requirements should return Failure rather than Success."""
+        result = validate_requirement_integrity(["not-a-dict"])
+        assert isinstance(result, Failure)
+
+
+def test_missing_schema_file_returns_failure(tmp_path: Path) -> None:
+    """Missing schema file should return Failure."""
+    missing_schema = tmp_path / "missing.schema.json"
+    result = validate_requirement_record_from_schema_file({}, missing_schema)
+    assert isinstance(result, Failure)
 
     def test_whitespace_only_string_in_policy_baseline_field_fails(self):
         """Whitespace-only string values in policy_baseline fields should fail validation."""
