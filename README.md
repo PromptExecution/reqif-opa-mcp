@@ -1,3 +1,57 @@
+<div align="center">
+  <pre>
+╔════════════════════════════════════════════════════════════════════╗
+║             ReqIF  →  OPA  →  SARIF  Compliance Gate              ║
+╚════════════════════════════════════════════════════════════════════╝
+  </pre>
+  <p><em>Spec-driven, standards-first compliance automation with auditable, portable reporting.</em></p>
+</div>
+
+<div align="center">
+  <table>
+    <tr>
+      <td><strong>Purpose</strong><br/>Turn requirements into deterministic gates with traceable evidence.</td>
+      <td><strong>Core Stack</strong><br/>ReqIF + OPA + SARIF + FastMCP.</td>
+      <td><strong>Audience</strong><br/>CI/CD, security, compliance, and platform teams.</td>
+    </tr>
+  </table>
+</div>
+
+---
+
+## The Premise (Why This Exists)
+
+Compliance is too often a PDF and a hope. This repo turns requirement text into **machine-enforceable policy**, then emits **portable SARIF** results that every pipeline can read. It is intentionally standards-first: ReqIF for requirements, OPA for decisions, SARIF for results, and decision logs for auditability.
+
+## How to Read This Repo
+
+This project is both a system and a playbook. If you are here to understand *capabilities* without reading Python, start with the contracts and the standards mapping below. If you are here to **build or extend**, you will want the agent conventions.
+
+<table>
+  <tr>
+    <td><strong>Start Here</strong></td>
+    <td>
+      <ul>
+        <li><strong>Data contracts</strong> define the ReqIF, facts, OPA inputs, and SARIF output formats.</li>
+        <li><strong>Architecture</strong> shows how agents, OPA, and the MCP server interlock.</li>
+        <li><strong>Evidence store</strong> preserves traceability for audits.</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td><strong>Agent Rules</strong></td>
+    <td>
+      The repository uses a strict agent style guide (a.k.a. “b00t syntax”): ruff only, PEP 484 typing, uv/uvx, FastMCP, and explicit error handling. See <a href="AGENTS.md"><strong>AGENTS.md</strong></a> before making changes.
+    </td>
+  </tr>
+</table>
+
+## What You Get
+
+**Deterministic gates** from OPA, **standards-compliant SARIF** for CI/CD ingestion, and **evidence-linked traceability** back to each requirement UID.
+
+---
+
 ReqIF→OPA→SARIF Compliance Gate System (FastMCP 3.0) — Spec-Driven, OSS/Standards-First
 Normative standards / formats
 
