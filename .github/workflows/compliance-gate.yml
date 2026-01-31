@@ -94,8 +94,8 @@ jobs:
           # Call MCP tool to parse ReqIF (via FastMCP HTTP endpoint)
           # This is a simplified example - in production you'd use proper MCP client
           # For now, we'll use the Python API directly
-          HANDLE=$(uv run python -c "
-          from reqif_mcp.server import store_baseline
+          # Parse and normalize ReqIF, save to file for subsequent steps
+          uv run python -c "
           from reqif_mcp.reqif_parser import parse_reqif_xml
           from reqif_mcp.normalization import normalize_reqif
           import base64
@@ -120,41 +120,49 @@ jobs:
 
               requirements = norm_result.unwrap()
               handle = str(ULID())
-              store_baseline(handle, requirements)
-              print(handle)
+
+              # Save requirements to file for subsequent steps
+              with open('baseline_requirements.json', 'w') as f:
+                  json.dump({'handle': handle, 'requirements': requirements}, f, indent=2)
+
+              print(f'Parsed {len(requirements)} requirements')
+              print(f'Baseline handle: {handle}')
           except Exception as e:
               print(f'Error: {e}', file=sys.stderr)
               sys.exit(1)
-          ")
+          "
 
+          HANDLE=$(jq -r '.handle' baseline_requirements.json)
           echo "BASELINE_HANDLE=$HANDLE" >> $GITHUB_OUTPUT
           echo "Baseline handle: $HANDLE"
 
       - name: Query requirements by subtype
         id: query_requirements
-        env:
-          BASELINE_HANDLE: ${{ steps.parse_baseline.outputs.BASELINE_HANDLE }}
         run: |
-          # Query CYBER requirements from the baseline
+          # Query CYBER requirements from the baseline file
           uv run python -c "
-          from reqif_mcp.server import query_requirements
           import json
           import sys
-          import os
 
-          handle = os.environ['BASELINE_HANDLE']
-          filtered = query_requirements(handle, subtypes=['CYBER'])
+          # Load baseline from file
+          with open('baseline_requirements.json') as f:
+              baseline_data = json.load(f)
 
-          # Check for errors
-          if 'error' in filtered:
-              print(f\"Query error: {filtered['error']}\", file=sys.stderr)
-              sys.exit(1)
+          requirements = baseline_data['requirements']
 
-          # Save requirements to file for next step
+          # Filter for CYBER requirements
+          cyber_reqs = [
+              req for req in requirements
+              if 'CYBER' in req.get('subtypes', [])
+          ]
+
+          # Save filtered requirements to file for next step
           with open('requirements.json', 'w') as f:
-              json.dump(filtered['requirements'], f, indent=2)
+              json.dump(cyber_reqs, f, indent=2)
 
-          print(f\"Found {filtered['returned_count']} CYBER requirements\")
+          print(f'Found {len(cyber_reqs)} CYBER requirements')
+          for req in cyber_reqs:
+              print(f\"  - {req.get('key', req.get('uid'))}\")
           "
 
       - name: Run agent to produce facts
@@ -169,28 +177,22 @@ jobs:
 
       - name: Evaluate requirements with OPA
         id: evaluate
-        env:
-          BASELINE_HANDLE: ${{ steps.parse_baseline.outputs.BASELINE_HANDLE }}
         run: |
           # For each requirement, evaluate with OPA
           uv run python -c "
           from reqif_mcp.opa_evaluator import evaluate_requirement
           from reqif_mcp.sarif_producer import generate_sarif_report, write_sarif_file
-          from reqif_mcp.server import get_baseline_by_handle
           from returns.result import Failure
           import json
           import sys
-          import os
           from pathlib import Path
           from ulid import ULID
 
-          handle = os.environ['BASELINE_HANDLE']
-          baseline_result = get_baseline_by_handle(handle)
-          if isinstance(baseline_result, Failure):
-              print(f'Baseline not found: {baseline_result.failure()}', file=sys.stderr)
-              sys.exit(1)
+          # Load baseline from file
+          with open('baseline_requirements.json') as f:
+              baseline_data = json.load(f)
 
-          requirements = baseline_result.unwrap()
+          requirements = baseline_data['requirements']
 
           # Load agent facts
           with open('agent_facts.json') as f:
