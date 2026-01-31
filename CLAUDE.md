@@ -114,7 +114,7 @@ Also use:
 - Maintain requirement lifecycle (versions, status, supersession links)
 - Serve requirement subsets by subtype, policy baseline, and scope
 - Accept verification events and attach trace links
-- FastMCP 3.0 tools: `reqif.parse`, `reqif.validate`, `reqif.query`, `reqif.write_verification`, `reqif.export_req_set`
+- FastMCP 3.0 tools: `reqif_parse`, `reqif_validate`, `reqif_query`, `reqif_write_verification`, `reqif_export_req_set`
 - Resources: `reqif://baseline/{id}`, `reqif://requirement/{uid}`
 
 ### OPA (Deterministic Gate)

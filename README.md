@@ -110,8 +110,8 @@ flowchart LR
     CI --> ART
   end
 
-  CI -->|reqif.parse/query| A
-  CI -->|reqif.write_verification| A
+  CI -->|reqif_parse/query| A
+  CI -->|reqif_write_verification| A
   ART --> AG["Agent runner (external)"]
   AG -->|facts.json| B
   A -->|req context| B
@@ -335,15 +335,15 @@ STDIO optional for local/dev.
 
 Core tools (MVP):
 
-reqif.parse(xml_b64) -> handle
+reqif_parse(xml_b64) -> handle
 
-reqif.validate(handle, mode=basic|strict) -> report
+reqif_validate(handle, mode=basic|strict) -> report
 
-reqif.query(where, baseline, subtypes[], status, limit, offset) -> req[]
+reqif_query(where, baseline, subtypes[], status, limit, offset) -> req[]
 
-reqif.write_verification(event) -> ok
+reqif_write_verification(event) -> ok
 
-reqif.export_req_set(format=json|arrow_ipc|parquet_ref) -> artifact_ref
+reqif_export_req_set(format=json|arrow_ipc|parquet_ref) -> artifact_ref
 
 Resources (versioned):
 
