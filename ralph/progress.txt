@@ -157,3 +157,13 @@
   - Archiver copies prd.json and progress.txt into archive/ and resets progress
   - returns Result/Option types keep file operations explicit
 ---
+
+## 2026-01-31 23:40 - US-006
+- Added ralph/runner.py with the main iteration loop and completion detection
+- Files changed: ralph/runner.py (new), ralph/prd.json (updated)
+- **Learnings for future iterations:**
+  - run_ralph loads config once and reuses the executor across iterations
+  - Iteration output uses clear separators and checks for <promise>COMPLETE</promise>
+  - Returns 0 on completion, 1 on max iterations or execution failure
+  - Sleep 2 seconds between iterations to match the legacy loop pacing
+---
