@@ -53,8 +53,12 @@ jobs:
             type=semver,pattern={{major}}
             # Latest tag for main branch
             type=raw,value=latest,enable={{is_default_branch}}
+            # PR tag (pr-15)
+            type=ref,event=pr,prefix=pr-
+            # Branch tag for main
+            type=ref,event=branch,enable=${{ github.ref == 'refs/heads/main' }}
             # SHA tag for traceability
-            type=sha,prefix={{branch}}-
+            type=sha,prefix=sha-
           labels: |
             org.opencontainers.image.title=ReqIF-OPA-MCP
             org.opencontainers.image.description=ReqIF compliance gate system with OPA and SARIF
