@@ -166,6 +166,8 @@ Ralph++ includes Python scripts for workflow automation:
 - **fetch_github_issue.py**: Fetches most recent open GitHub issue using `gh` CLI
 - **convert_issue_to_prd.py**: Converts GitHub issue to prd.json format
 - **commit_formatter.py**: Generates conventional commit messages from user stories
+- **create_pr.py**: Creates GitHub pull request when issue is complete
+- **log_issue_completion.py**: Logs issue completion summary to progress.txt
 - **check_backlog.py**: Checks if backlog is clear (no local prd.json and no open issues)
 
 **Usage Examples:**
@@ -175,6 +177,9 @@ uv run python ralph/commit_formatter.py US-007
 
 # Use in git commit
 git commit -m "$(uv run python ralph/commit_formatter.py US-007)"
+
+# Log issue completion
+uv run python ralph/log_issue_completion.py ralph/prd.json https://github.com/org/repo/pull/123
 
 # Check if backlog is clear
 uv run python ralph/check_backlog.py
