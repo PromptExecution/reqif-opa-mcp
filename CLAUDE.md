@@ -224,3 +224,99 @@ This is a greenfield project. The README.md and PRD specify the complete archite
 - Policy files: `*.rego` with rubric package per subtype
 - Data files: `*.json` for lookup tables, thresholds
 - Metadata includes version and hash
+
+## Ralph++ Autonomous Workflow
+
+Ralph++ is an enhanced autonomous agent system that automatically transitions between completed PRDs and new GitHub issues, creating a continuous workflow until the backlog is clear.
+
+### Complete Workflow
+
+1. **Read PRD**: Check `ralph/prd.json` for user stories
+2. **Implement**: Execute highest priority incomplete story
+3. **Quality Check**: Run typecheck, lint, tests
+4. **Commit**: Use conventional commits with story ID scope
+5. **Update**: Mark story as `passes: true` in prd.json
+6. **Archive**: When all stories complete, move prd.json to `.archive/prd-YYYYMMDD-HHMMSS-[project].json`
+7. **Fetch Issue**: Get most recent open GitHub issue
+8. **Convert**: Transform issue (body + comments) to prd.json format
+9. **Create PR**: When issue completed, create PR with `gh pr create`
+10. **Repeat**: Continue until no local prd.json and no open issues
+
+### Exit Condition
+
+Ralph exits when the backlog is clear:
+- No `ralph/prd.json` exists
+- No open GitHub issues found via `gh issue list --state open --limit 1`
+- Prints: `✅ BACKLOG CLEAR - All issues completed!`
+
+This indicates all work items have been processed and archived.
+
+### Conventional Commit Requirement
+
+When completing user stories from GitHub issues, commits must follow conventional commit format:
+
+```
+<type>(<scope>): <description>
+
+<body>
+
+Closes #<issue-number>
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+```
+
+**Format Rules**:
+- **Type**: `feat` (new feature), `fix` (bug fix), `docs` (documentation), `chore` (maintenance)
+- **Scope**: User story ID (e.g., `feat(US-042): implement health endpoint`)
+- **Description**: User story title, max 72 characters
+- **Body**: Acceptance criteria summary
+- **Footer**: `Closes #<issue-number>` if from GitHub issue, plus co-author tag
+
+### Pull Request Creation
+
+When all user stories from a GitHub issue are completed (`passes: true`):
+
+1. Create PR using `gh pr create`
+2. PR title: `feat: <issue-title>` or `fix: <issue-title>` based on content
+3. PR body template:
+   ```
+   ## Summary
+   [user stories completed]
+
+   ## Testing
+   [test results]
+
+   Closes #<number>
+   ```
+4. Use branch name from `prd.json` `branchName` field
+5. Target branch: main or master (auto-detect default branch)
+6. PR created only if on feature branch (not on main/master)
+7. Return PR URL in completion message
+
+### Troubleshooting
+
+**gh CLI not installed**:
+```bash
+# Install GitHub CLI
+curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+sudo apt update
+sudo apt install gh
+```
+
+**Authentication issues**:
+```bash
+# Authenticate with GitHub
+gh auth login
+# Or set token
+export GITHUB_TOKEN=<your-token>
+```
+
+**Repository not configured**:
+- Ralph requires a git repository with a GitHub remote
+- Ensure you're in a git repo: `git status`
+- Add GitHub remote if missing: `git remote add origin <repo-url>`
+
+**Issue parsing failures**:
+- Ensure issues follow template format with `### US-XXX:` user stories
+- Check comments for additional requirements
+- If no explicit user stories found, Ralph creates a single story from issue body
