@@ -12,3 +12,12 @@ Started: Sat Jan 31 13:52:42 AEDT 2026
   - Logging: Use emoji prefixes (✅, ℹ️, ⚠️) for user-friendly console output
   - Type safety: json.load() returns Any, so explicitly cast to Dict[str, Any] after validation
 ---
+## 2026-01-31 - US-006
+- Added "Ralph++ Autonomous Workflow" section to CLAUDE.md
+- Files changed: CLAUDE.md
+- **Learnings for future iterations:**
+  - Pattern: Place workflow documentation in CLAUDE.md so Claude Code understands the process when invoked
+  - Documentation structure: Complete workflow steps, exit conditions, commit formats, PR creation, troubleshooting
+  - Troubleshooting patterns: Include installation commands, authentication setup, common configuration issues
+  - Integration point: CLAUDE.md serves as persistent memory for autonomous agents across sessions
+---
