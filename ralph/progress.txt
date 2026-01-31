@@ -95,3 +95,17 @@
   - Pattern: Use subprocess.run with timeout for external command execution
 ---
 
+## 2026-01-31 - US-009
+- Implemented check_backlog.py script for graceful backlog-clear exit
+- Files changed: ralph/check_backlog.py (new), ralph/README.md (updated)
+- **Learnings for future iterations:**
+  - check_backlog.py provides clean exit when backlog is clear (no local prd.json + no open issues)
+  - Script checks local prd.json first, then GitHub issues via gh CLI
+  - Exit codes: 0 (backlog clear), 1 (work remaining), 2 (error)
+  - Includes archived PRD count in backlog clear message for visibility
+  - Uses NoReturn type hint for exit functions (all exit paths must call sys.exit)
+  - Match statement requires explicit _ case for mypy --strict compliance
+  - README.md updated with check_backlog.py usage and exit code documentation
+  - Pattern: Check local state before external APIs for better performance
+---
+
