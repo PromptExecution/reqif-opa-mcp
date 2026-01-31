@@ -214,7 +214,6 @@ jobs:
                   facts=facts,
                   bundle_path='opa-bundles/example',
                   context={'target': facts['target']},
-                  evaluation_id=evaluation_id,
                   enable_decision_logging=True
               )
 
