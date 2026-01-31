@@ -52,50 +52,51 @@ This project is both a system and a playbook. If you are here to understand *cap
 
 ---
 
-ReqIF→OPA→SARIF Compliance Gate System (FastMCP 3.0) — Spec-Driven, OSS/Standards-First
-Normative standards / formats
+## Spec & System Map
 
-ReqIF 1.2 (requirements interchange, XML).
+### At a glance
 
-SARIF v2.1.0 (OASIS Standard) (static analysis results interchange).
+- **Server**: `reqif_mcp/` (FastMCP tools + resources)
+- **OPA**: `opa-bundles/` (policy/data bundles)
+- **Evidence**: `evidence_store/` (decision logs, SARIF, events)
+- **Schemas**: `schemas/` (ReqIF + facts + SARIF mappings)
+- **Docs**: `docs/` — [evidence store](docs/evidence-store.md), [SARIF mapping](docs/sarif-mapping.md), [agent runner interface](docs/agent-runner-interface.md), [deployment](docs/deployment.md)
 
-OPA policy bundles (policy+data distribution; optional signatures).
+### Quickstart (local)
 
-OPA decision logs (auditable record of each policy query).
+- `uv sync`
+- `python -m reqif_mcp --http --host 127.0.0.1 --port 8000`
 
-OPA in CI/CD (policy-as-code gates).
+### Glossary (spec-first)
 
-FastMCP 3.0 server scaffolding + HTTP transport + versioned resources.
+- ReqIF — [OMG ReqIF](https://www.omg.org/spec/ReqIF/)
+- SARIF — [OASIS SARIF v2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html)
+- OPA — [Open Policy Agent](https://www.openpolicyagent.org/docs/latest/)
+- FastMCP — [fastmcp](https://github.com/jlowin/fastmcp)
 
-Opinionated ecosystem
+### Standards & formats (normative)
 
-GitOps/CI produces artifacts (code diff, build outputs, infra manifests, SBOM, test reports).
+| Standard | Role | Notes |
+| --- | --- | --- |
+| ReqIF 1.2 | Requirements interchange | XML source of truth |
+| SARIF v2.1.0 | Results interchange | CI/CD ingestion + UI |
+| OPA bundles | Policy distribution | policy + data, optional signatures |
+| OPA decision logs | Audit trail | immutable JSONL |
+| FastMCP 3.0 | Server surface | tools + HTTP + versioned resources |
 
-Deterministic compliance = OPA; semantic extraction = agent skills.
+### System objective
 
-Compliance UI + interchange = SARIF (primary), plus OPA decision logs (audit), plus ReqIF trace links (governance).
+**Given**
+- Requirements (ReqIF) with subtype(s) + rubric references
+- A target (commit/changeset/build artifact)
+- Agent-produced, structured facts
 
-1) System objective
+**Produce**
+- OPA decision(s) (deterministic)
+- SARIF run(s) (portable reporting)
+- Traceable evidence linked to requirement UID + target revision
 
-Given:
-
-Requirements (ReqIF) with subtype(s) and evaluation rubric references,
-
-A target (commit/changeset/build artifact),
-
-Agent-produced structured facts,
-
-Produce:
-
-OPA decision(s) (deterministic),
-
-SARIF run(s) (portable reporting),
-
-Traceable verification evidence linked to requirement UID and target revision,
-
-Repeatable gates suitable for CI/CD.
-
-2) High-level architecture
+### High-level architecture
 ```mermaid
 flowchart LR
   subgraph R["ReqIF MCP Server (FastMCP 3.0)"]
@@ -136,41 +137,18 @@ flowchart LR
   A --> EV
 ```
 
-3) Responsibilities (strict separation)
-ReqIF MCP server (authority)
+### Responsibilities (strict separation)
 
-Parse/validate ReqIF.
+| Component | Responsibilities |
+| --- | --- |
+| ReqIF MCP server | Parse/validate ReqIF, manage lifecycle, serve requirement subsets, accept verification events |
+| OPA evaluator | Deterministic evaluation, structured decisions, decision logs |
+| Agents | Extract typed facts + evidence pointers (no pass/fail decisions) |
+| SARIF producer | Map requirement ↔ rule and evaluation ↔ result for CI ingestion |
 
-Maintain requirement lifecycle: versions, status (active/obsolete), supersession links.
+### Data contracts (normative)
 
-Serve requirement subsets by subtype, policy baseline, and scope.
-
-Accept verification events and attach trace links.
-
-OPA (deterministic gate)
-
-Evaluate rubric rules against facts + requirement metadata.
-
-Return structured decision object (not just allow/deny).
-
-Emit decision logs for audit.
-
-Consume policies/data via bundles (+ signatures if required).
-
-Agents (semantic/heuristic)
-
-Turn changeset/build artifacts into typed facts.
-
-Never decide pass/fail directly; only produce facts + evidence pointers.
-
-SARIF producer (report interoperability)
-
-Translate: requirement ↔ rule, evaluation ↔ result.
-
-Primary output format for CI ingestion and aggregation.
-
-4) Data contracts (normative)
-4.1 Requirement record (server output)
+#### Requirement record (server output)
 
 Minimal normalized JSON (schema reqif-mcp/1):
 
@@ -185,7 +163,7 @@ Minimal normalized JSON (schema reqif-mcp/1):
   "attrs": {"severity":"high","owner":"...","verify_method":"analysis|test|inspection|demo"}
 }
 
-4.2 Agent facts (OPA input)
+#### Agent facts (OPA input)
 
 Schema facts/1 (typed, evidence-addressable):
 
@@ -204,7 +182,7 @@ Schema facts/1 (typed, evidence-addressable):
   "agent": {"name":"cyber-agent","version":"x.y","rubric_hint":"cyber.access_control.v3"}
 }
 
-4.3 OPA evaluation input (composed)
+#### OPA evaluation input (composed)
 
 OPA input = { requirement, facts, context }.
 
@@ -224,7 +202,7 @@ OPA output MUST be:
 
 Decision logs MUST be enabled for audit.
 
-4.4 SARIF output mapping (normative)
+#### SARIF output mapping (normative)
 
 One SARIF run per pipeline evaluation unit (e.g., per subtype or per rubric bundle).
 
@@ -256,8 +234,9 @@ requirement_uid, requirement_key, subtypes[], policy_baseline.version, opa.polic
 
 SARIF is the standard interchange for static analysis results.
 
-5) Workflows (normative)
-5.1 Policy distillation → requirements publication
+### Workflows (normative)
+
+#### Policy distillation → requirements publication
 External upstream process (not implemented in this repo).
 ```mermaid
 sequenceDiagram
@@ -274,7 +253,7 @@ sequenceDiagram
   OPA-->>Distill: Bundle revision + hash
 ```
 
-5.2 CI/CD evaluation gate (changeset)
+#### CI/CD evaluation gate (changeset)
 Example orchestration (outside this repo) using reqif_mcp modules.
 ```mermaid
 sequenceDiagram
@@ -297,7 +276,7 @@ sequenceDiagram
   CI->>Req: write verification event (trace link)
 ```
 
-5.3 Requirement lifecycle (supersession, obsolescence)
+#### Requirement lifecycle (supersession, obsolescence)
 Conceptual lifecycle metadata (supersession not persisted by server yet).
 ```mermaid
 flowchart TD
@@ -307,9 +286,9 @@ flowchart TD
   R1 -->|"status=obsolete"| R1
 ```
 
-6) Gate criteria model (beyond pass/fail)
+### Gate criteria model (beyond pass/fail)
 
-Status set (closed):
+**Status set (closed)**
 
 pass
 
@@ -325,7 +304,7 @@ not_applicable
 
 waived (explicit exception with approval ref)
 
-Quantities (optional, but supported):
+**Quantities (optional, but supported)**
 
 score ∈ [0,1] (weighted rubric)
 
@@ -335,7 +314,7 @@ coverage ∈ [0,1] (criteria evaluated / criteria total)
 
 severity ∈ {low,med,high,critical} (requirement attribute)
 
-Gate policies (OPA-level, separate from rubric):
+**Gate policies (OPA-level, separate from rubric)**
 
 Block release if any fail for severity>=high
 
@@ -347,15 +326,15 @@ Allow conditional_pass for non-critical, but annotate SARIF
 
 OPA is explicitly used as CI/CD guardrails.
 
-7) FastMCP 3.0 server surface (normative)
+### FastMCP 3.0 server surface (normative)
 
-Transport:
+**Transport**
 
 HTTP (streamable) for multi-client CI usage.
 
 STDIO optional for local/dev.
 
-Core tools (MVP):
+**Core tools (MVP)**
 
 reqif.parse(xml_b64) -> handle
 
@@ -367,7 +346,7 @@ reqif.write_verification(event) -> ok
 
 reqif.export_req_set(format=json|arrow_ipc|parquet_ref) -> artifact_ref
 
-Resources (versioned):
+**Resources (versioned)**
 
 reqif://baseline/{id} (returns metadata + hashes)
 
@@ -375,9 +354,9 @@ reqif://requirement/{uid}
 
 FastMCP 3.0 provides tools, HTTP transport, and versioned resources.
 
-8) OPA integration (normative)
+### OPA integration (normative)
 
-Policy distribution:
+**Policy distribution**
 
 OPA bundles, optionally signed.
 
@@ -387,25 +366,25 @@ policy/*.rego
 
 data/*.json (optional lookup tables, thresholds, subtype maps)
 
-Evaluation endpoint:
+**Evaluation endpoint**
 
 Local opa eval or OPA REST API (implementation choice).
 
 Input must include policy.bundle hash/revision (for provenance).
 
-Audit:
+**Audit**
 
 Decision logs enabled; shipped to evidence store.
 
-9) Evidence storage (OSS-first)
+### Evidence storage (OSS-first)
 
-Authoritative vs derived:
+**Authoritative vs derived**
 
 Authority: ReqIF XML + requirement graph.
 
 Evidence: append-only event log + columnar projections.
 
-Required stores:
+**Required stores**
 
 JSONL event log (append-only)
 
@@ -415,7 +394,7 @@ SARIF artifacts saved verbatim
 
 (Arrow/Parquet are implementation choices; contract is "tabular + immutable events".)
 
-9.1 Log rotation strategy (decision logs)
+**Log rotation strategy (decision logs)**
 
 Decision logs are written to evidence_store/decision_logs/decisions.jsonl as an append-only JSONL file.
 
@@ -435,8 +414,9 @@ For MVP: Decision logs are written to single file without automatic rotation. Pr
 
 Decision logs are immutable audit trail - never modify or delete logs without governance approval.
 
-10) Test specification (must be implemented)
-10.1 Unit tests
+### Test specification (must be implemented)
+
+#### Unit tests
 
 ReqIF parse/validate:
 
@@ -450,7 +430,7 @@ Lifecycle:
 
 supersession graph invariants.
 
-10.2 OPA policy tests (bundle-contained)
+#### OPA policy tests (bundle-contained)
 
 For each rubric package:
 
@@ -462,7 +442,7 @@ mixtures of results → expected release decision.
 
 (OPA supports CI/CD usage and is typically policy-tested; bundle testing is standard practice in the ecosystem.)
 
-10.3 Integration tests
+#### Integration tests
 
 End-to-end:
 
@@ -478,7 +458,7 @@ write verification event
 
 assert trace links and artifact hashes
 
-10.4 SARIF conformance tests
+#### SARIF conformance tests
 
 Validate SARIF against SARIF v2.1.0 schema (use an OSS validator).
 
@@ -492,20 +472,10 @@ locations present when evidence has code spans
 
 SARIF is standardized; conformance is testable.
 
-11) Minimal deliverables (MVP)
+### Minimal deliverables (MVP)
 
-FastMCP 3.0 ReqIF MCP server with tools/resources above.
-
-OPA bundle template:
-
-rubric package per subtype
-
-gate policy package
-
-bundle metadata & optional signatures.
-
-Agent runner contract (facts/1) + stub agent.
-
-SARIF producer implementing the normative mapping.
-
-Test suite: unit + opa policy tests + integration + sarif validation.
+- **FastMCP 3.0 ReqIF MCP server** with tools/resources above (`reqif_mcp/`).
+- **OPA bundle template** in `opa-bundles/` with rubric package per subtype, gate policy package, and bundle metadata (+ optional signatures).
+- **Agent runner contract** (facts/1) + stub agent (see [agent runner interface](docs/agent-runner-interface.md)).
+- **SARIF producer** implementing the normative mapping (see [SARIF mapping](docs/sarif-mapping.md)).
+- **Test suite**: unit + OPA policy tests + integration + SARIF validation.

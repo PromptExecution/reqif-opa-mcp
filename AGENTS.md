@@ -10,7 +10,7 @@ repo)
 - ALWAYS using uv, uvx (NEVER poetry or pip!), PREFER pixi not conda
 	* unless project already uses conda
 	* avoid editing pyproject.toml directly; use uv! 
-- 
+- README: keep Quickstart + Glossary laconic; Glossary uses external spec links.
 
 - MCP
 	* https://github.com/jlowin/fastmcp >= 0.4.0
@@ -43,6 +43,5 @@ match get_user(2):
 ```
 	- __str__, __repr__, plus logging + traceback module
 	- Exception hierarchy + decorators/middleware
-
 
 
