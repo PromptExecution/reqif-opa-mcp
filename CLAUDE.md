@@ -271,6 +271,22 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 - **Body**: Acceptance criteria summary
 - **Footer**: `Closes #<issue-number>` if from GitHub issue, plus co-author tag
 
+**Using the commit formatter utility**:
+```bash
+# Generate properly formatted commit message for a user story
+uv run python ralph/commit_formatter.py US-007
+
+# Use in git commit
+git commit -m "$(uv run python ralph/commit_formatter.py US-007)"
+```
+
+The `commit_formatter.py` utility automatically:
+- Infers commit type from story title (feat/fix/docs/chore)
+- Formats subject line with proper scope
+- Includes all acceptance criteria in the body
+- Adds GitHub issue closure if from an issue
+- Includes co-author attribution
+
 ### Pull Request Creation
 
 When all user stories from a GitHub issue are completed (`passes: true`):

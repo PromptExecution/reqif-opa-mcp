@@ -165,6 +165,16 @@ Ralph++ includes Python scripts for workflow automation:
 - **check_prd.py**: Validates prd.json and checks for incomplete stories
 - **fetch_github_issue.py**: Fetches most recent open GitHub issue using `gh` CLI
 - **convert_issue_to_prd.py**: Converts GitHub issue to prd.json format
+- **commit_formatter.py**: Generates conventional commit messages from user stories
+
+**Usage Example:**
+```bash
+# Generate commit message for US-007
+uv run python ralph/commit_formatter.py US-007
+
+# Use in git commit
+git commit -m "$(uv run python ralph/commit_formatter.py US-007)"
+```
 
 **Requirements:**
 - Python 3.11+
