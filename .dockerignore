@@ -1,0 +1,58 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv/
+ENV/
+env/
+.mypy_cache
+.pytest_cache
+.ruff_cache
+*.egg-info
+dist/
+build/
+
+# IDEs
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation (keep LICENSE and README)
+docs/
+*.md
+!README.md
+!LICENSE
+
+# CI/CD
+.github/
+.claude/
+
+# Testing
+tests/
+.coverage
+htmlcov/
+.tox/
+
+# Project-specific
+ralph/
+tasks/
+hello.py
+evidence_store/
+!evidence_store/.gitkeep
+
+# Development tools
+justfile
+Dockerfile
+.dockerignore
+docker-compose.yml
