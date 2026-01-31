@@ -19,6 +19,65 @@
 
 ---
 
+## The Big Picture: Policy Distillation → Parallelized Assurance
+
+This system separates **policy authoring** (happens rarely) from **policy validation** (happens continuously in CI/CD).
+
+```mermaid
+flowchart TB
+    subgraph "Policy Distillation (When Policy Changes)"
+        PS[Policy Sources<br/>SharePoint/Confluence/Docs] --> PD[Policy Distillation Pipeline<br/>⚡ SLMs for semantic extraction]
+        PD --> REQ[ReqIF Baseline<br/>Serialized Requirements]
+        PD --> OPA_B[OPA Bundle<br/>Evaluation Policies]
+        REQ -.stored on network.-> STORE[(Network Storage<br/>ReqIF + OPA Bundles)]
+        OPA_B -.stored on network.-> STORE
+    end
+    
+    subgraph "CI/CD Validation (Every Commit)"
+        STORE --> MCP[ReqIF MCP Server<br/>Loads baseline]
+        STORE --> OPA[OPA Engine<br/>Loads bundles]
+        
+        CODE[Code Changes<br/>Artifacts/SBOM] --> AGENTS[Parallel Agents<br/>⚡ SLMs extract facts]
+        AGENTS --> FACTS[Structured Facts]
+        
+        MCP --> REQS[Query Requirements<br/>by subtype]
+        REQS --> EVAL[OPA Evaluation<br/>facts + requirements]
+        FACTS --> EVAL
+        OPA --> EVAL
+        
+        EVAL --> SARIF[SARIF Reports<br/>Portable results]
+        SARIF --> GATE{Compliance<br/>Gate}
+        GATE -->|Pass| DEPLOY[✅ Deploy]
+        GATE -->|Fail| BLOCK[❌ Block]
+    end
+    
+    PS -.happens rarely.-> PD
+    CODE -.happens continuously.-> AGENTS
+```
+
+**Key Concepts:**
+
+1. **Policy Distillation** (upstream, future scope):
+   - Triggered ONLY when policy sources change
+   - SLMs perform semantic extraction into ReqIF requirements
+   - Output: ReqIF baseline + OPA bundles stored on network
+   - Many requirement sets processed in parallel
+   - *Will be integrated into this repo before MVP release*
+
+2. **Parallelized Validation** (this repo, current scope):
+   - CI/CD reads pre-distilled requirements from network storage
+   - Multiple agents run in parallel using SLMs (not LLMs)
+   - Each agent extracts facts for specific requirement subtypes
+   - OPA evaluates facts against pre-compiled policies
+   - Deterministic, fast, auditable
+
+3. **Cognitive Assurance at Scale**:
+   - Organization maintains many requirement sets (security, safety, compliance)
+   - Each set validated independently and in parallel
+   - Results aggregated via SARIF for holistic gate decisions
+
+---
+
 ## The Premise (Why This Exists)
 
 Compliance is too often a PDF and a hope. This repo turns requirement text into **machine-enforceable policy**, then emits **portable SARIF** results that every pipeline can read. It is intentionally standards-first: ReqIF for requirements, OPA for decisions, SARIF for results, and decision logs for auditability.
@@ -234,46 +293,42 @@ requirement_uid, requirement_key, subtypes[], policy_baseline.version, opa.polic
 
 SARIF is the standard interchange for static analysis results.
 
-## Workflows (normative)
-### Policy Distillation → requirements publication
-External upstream process (not implemented in this repo).
+## Workflows
+
+### Policy Distillation → Requirements Publication
+
+**Upstream process (future scope, will be in this repo before MVP):**
+
 ```mermaid
 sequenceDiagram
-  participant Author as Policy Authoring (source docs)
-  participant Distill as Distillation Pipeline
-  participant Req as ReqIF MCP Server
-  participant OPA as OPA Bundle Registry
+    participant Source as Policy Sources<br/>(SharePoint/Confluence)
+    participant Distill as Distillation Pipeline<br/>(SLMs)
+    participant Store as Network Storage
+    participant MCP as ReqIF MCP Server
+    participant OPA_R as OPA Bundle Registry
 
-  Author->>Distill: Update policy baseline (vNext)
-  Distill->>Distill: Extract requirements + subtypes + rubric refs
-  Distill->>Req: Publish ReqIF package (new baseline)
-  Distill->>OPA: Publish OPA bundle revision (matching baseline)
-  Req-->>Distill: Baseline handle + hash
-  OPA-->>Distill: Bundle revision + hash
+    Note over Source: Policy updated (rare event)
+    Source->>Distill: Trigger distillation
+    Distill->>Distill: Semantic extraction (parallel SLMs)
+    Distill->>Distill: Generate ReqIF baseline
+    Distill->>Distill: Generate OPA bundles
+    Distill->>Store: Publish ReqIF baseline
+    Distill->>Store: Publish OPA bundles
+    Store-->>MCP: Available for CI/CD
+    Store-->>OPA_R: Available for CI/CD
+    
+    Note over Store: Stored once, read many times
 ```
 
-### CI/CD Evaluation Gate (changeset)
-Example orchestration (outside this repo) using reqif_mcp modules.
-```mermaid
-sequenceDiagram
-  participant CI as CI Job
-  participant Req as ReqIF MCP Server
-  participant Agent as Subtype Agent Runner
-  participant OPA as OPA Evaluator (subprocess)
-  participant SAR as SARIF Producer (module)
-  participant Store as Evidence Store
+**Key Points:**
+- Distillation runs ONLY when source policies change
+- Many requirement sets processed in parallel
+- SLMs extract semantic requirements from unstructured sources
+- Output stored on network for CI/CD consumption
+- Enables parallelized cognitive assurance at scale
 
-  CI->>Req: query requirements by subtype(s) + scope
-  Req-->>CI: req set (uid/key/text/rubrics)
-  CI->>Agent: run agent(skill=subtype) on artifacts/diff
-  Agent-->>CI: facts+evidence refs
-  CI->>OPA: evaluate (req + facts + context)
-  OPA-->>CI: decision(status/criteria/score)
-  CI->>SAR: emit SARIF(run)
-  SAR-->>CI: sarif.json
-  CI->>Store: append evaluation record + SARIF
-  CI->>Req: write verification event (trace link)
-```
+### CI/CD Evaluation Gate
+
 
 ### Requirement Lifecycle (supersession, obsolescence)
 Conceptual lifecycle metadata (supersession not persisted by server yet).
