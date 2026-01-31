@@ -21,3 +21,16 @@
   - Script is executable standalone: `python3 ralph/archive_prd.py`
 ---
 
+## 2026-01-31 17:34 - US-003
+- Implemented fetch_github_issue.py script for fetching open GitHub issues
+- Files changed: ralph/fetch_github_issue.py (new)
+- **Learnings for future iterations:**
+  - gh CLI version 2.31.0 doesn't support --order/--sort flags
+  - Workaround: fetch more issues (limit 100) and sort in Python by createdAt
+  - Script checks for gh CLI installation and authentication before proceeding
+  - Exit codes: 0 for success/no issues, 1 for errors
+  - Clear error messages guide users to install gh or run `gh auth login`
+  - Type hints with mypy --strict passes, ruff linting passes
+  - Script outputs issue JSON to stdout for downstream processing
+---
+
