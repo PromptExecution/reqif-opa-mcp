@@ -1,0 +1,47 @@
+set shell := ["bash", "-c"]
+
+default:
+    @just --list
+
+test:
+    cd .. && uv run pytest -q \
+        tests/test_reqif_ingest_cli_artifact.py \
+        tests/test_reqif_ingest_cli_xlsx.py \
+        tests/test_reqif_ingest_cli_docling_distill.py \
+        tests/test_reqif_ingest_cli_reqif_emitter.py \
+        tests/test_reqif_ingest_cli_foundry.py
+
+lint:
+    cd .. && uv run ruff check reqif_ingest_cli \
+        tests/test_reqif_ingest_cli_artifact.py \
+        tests/test_reqif_ingest_cli_xlsx.py \
+        tests/test_reqif_ingest_cli_docling_distill.py \
+        tests/test_reqif_ingest_cli_reqif_emitter.py \
+        tests/test_reqif_ingest_cli_foundry.py
+
+typecheck:
+    cd .. && uv run mypy reqif_ingest_cli
+
+check: lint typecheck test
+
+artifact path:
+    cd .. && uv run python -m reqif_ingest_cli register-artifact "{{path}}" --pretty
+
+extract path profile="auto":
+    cd .. && uv run python -m reqif_ingest_cli extract "{{path}}" --profile "{{profile}}" --pretty
+
+distill path profile="auto":
+    cd .. && uv run python -m reqif_ingest_cli distill "{{path}}" --profile "{{profile}}" --pretty
+
+emit path output profile="auto" title="Derived ReqIF":
+    cd .. && uv run python -m reqif_ingest_cli emit-reqif "{{path}}" \
+        --profile "{{profile}}" \
+        --title "{{title}}" \
+        --output "{{output}}" \
+        --pretty
+
+smoke-aemo-core:
+    cd .. && uv run python -m reqif_ingest_cli distill "The AESCSF v2 Core.xlsx" --pretty
+
+smoke-aemo-toolkit:
+    cd .. && uv run python -m reqif_ingest_cli distill "V2 AESCSF Toolkit Version V1-1.xlsx" --pretty

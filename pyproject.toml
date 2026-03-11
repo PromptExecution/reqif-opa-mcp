@@ -8,6 +8,11 @@ dependencies = [
     "python-ulid>=3.1.0",
     "returns>=0.26.0",
     "fastmcp==3.0.0b1",
+    "docling>=2.78.0",
+    "reqif>=0.0.48",
+    "azure-ai-inference>=1.0.0b9",
+    "openpyxl>=3.1.5",
+    "pypdf>=6.8.0",
 ]
 
 [dependency-groups]
