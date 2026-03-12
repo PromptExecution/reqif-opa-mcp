@@ -80,10 +80,12 @@ def distill_xlsx_requirements(
 def detect_xlsx_profile(workbook: Workbook) -> str:
     """Detect the workbook profile from stable sheet structure."""
     first_sheet = workbook[workbook.sheetnames[0]]
-    first_row = [
-        normalize_text(value)
-        for value in next(first_sheet.iter_rows(min_row=1, max_row=1, values_only=True))
-    ]
+    try:
+        header_row = next(first_sheet.iter_rows(min_row=1, max_row=1, values_only=True))
+    except StopIteration:
+        # Empty sheet: no header row available, fall back to generic profile.
+        return "generic_xlsx_table"
+    first_row = [normalize_text(value) for value in header_row]
     header_set = set(first_row)
     if {
         "Domain",
