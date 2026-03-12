@@ -107,7 +107,7 @@ flowchart TD
     R[Selected requirement] --> MP{Meta-policy valid?}
     MP -- no --> MFAIL[Hard gate failure<br/>EMPTY_BASELINE / EMPTY_SELECTION / etc.]
     MP -- yes --> OPA[OPA decision]
-    OPA --> CRIT[criteria[] + reasons[] + policy provenance]
+    OPA --> CRIT[criteria, reasons, and policy provenance]
     CRIT --> PROC{Processing healthy?}
     PROC -- no --> PFAIL[Hard gate failure<br/>OPA / SARIF / verification error]
     PROC -- yes --> DEC{Decision status}
