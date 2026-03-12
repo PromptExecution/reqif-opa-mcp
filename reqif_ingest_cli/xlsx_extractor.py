@@ -610,7 +610,14 @@ def _detect_header_row(worksheet: Worksheet, search_rows: int = 10) -> int:
         non_empty = [value for value in values if value]
         if not non_empty:
             continue
-        semantic_hits = sum(1 for value in non_empty if map_header_name(value, 1) != "column_a")
+        # Count cells whose header text maps to a recognized semantic name,
+        # i.e. where map_header_name does not return the generic fallback
+        # "column_{col_index}" for that column.
+        semantic_hits = sum(
+            1
+            for col_index, value in enumerate(values, start=1)
+            if value and map_header_name(value, col_index) != f"column_{col_index}"
+        )
         score = len(non_empty) + semantic_hits
         if score > best_score:
             best_row = row_index
