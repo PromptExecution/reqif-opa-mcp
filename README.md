@@ -39,7 +39,7 @@ What exists today:
 
 - ReqIF parse/normalize/query/verification via MCP
 - Deterministic source-to-ReqIF derivation for XLSX, text-layer PDF, DOCX, and Markdown
-- Standards sample baselines for OWASP ASVS and NIST SSDF dogfooding
+- Standards sample baselines for OWASP ASVS and NIST SSDF repo self-testing
 - Selective compliance-gate filtering by requirement key, attribute, text fragment, or limit
 - Typed test coverage for parser, normalization, SARIF mapping, compliance gate, and ingest
 
@@ -51,33 +51,16 @@ What is still future work:
 - richer PDF structure extraction with pre-seeded offline Docling models
 - externalized profile/config mapping instead of code-first profile logic
 
-```mermaid
-flowchart LR
-    SRC[Source artifacts] --> ING[reqif_ingest_cli]
-    ING --> REQIF[Derived ReqIF]
-    REQIF --> MCP[reqif_mcp]
-    FACTS[Agent facts] --> GATE[OPA compliance gate]
-    MCP --> GATE
-    GATE --> OUT[SARIF + verification events]
-```
-
 ## Architecture
 
-```mermaid
-flowchart LR
-    S[Source artifacts<br/>xlsx / pdf / docx / md] --> A[artifact/1]
-    A --> G[document_graph/1]
-    G --> C[requirement_candidate/1]
-    C --> R[Derived ReqIF XML]
+The system has two deliberate pipelines:
 
-    R --> M[reqif_mcp FastMCP]
-    F[Agent facts JSON] --> O[OPA evaluation]
-    M --> O
-    O --> SARIF[SARIF reports]
-    O --> LOGS[Verification events<br/>decision logs]
-```
+- ingestion pipeline
+  - source artifact -> artifact record -> document graph -> requirement candidate -> derived ReqIF
+- gate pipeline
+  - derived ReqIF + agent facts -> OPA decision -> SARIF + verification events
 
-The boundary is deliberate:
+The control boundary is equally deliberate:
 
 - ingestion is standalone and deterministic first
 - ReqIF remains a derived artifact
@@ -116,7 +99,7 @@ flowchart TD
     DEC -- conditional / blocked / inconclusive --> GREVIEW[Review path]
 ```
 
-Useful filter controls when dogfooding or triaging:
+Useful filter controls during self-test runs or triage:
 
 - `--requirement-key`
 - `--attribute-filter`
@@ -124,17 +107,6 @@ Useful filter controls when dogfooding or triaging:
 - `--limit`
 
 ## Quick Start
-
-```mermaid
-flowchart LR
-    A[Install deps] --> B[Engineer path]
-    A --> X[Executive path]
-    B --> C[Run checks]
-    C --> D[Serve MCP]
-    C --> E[Smoke ingest]
-    C --> F[Dogfood standards gate]
-    X --> G[Read status + architecture + roadmap]
-```
 
 Root repo:
 
@@ -148,15 +120,15 @@ Ingest and derived ReqIF smoke:
 
 ```bash
 just -f reqif_ingest_cli/justfile check
-just dogfood-ingest
+just selftest-ingest
 ```
 
-Security standards dogfood:
+Repo security self-test:
 
 ```bash
-just dogfood-asvs
-just dogfood-asvs-cwe CWE-20
-just dogfood-ssdf
+just selftest-asvs
+just selftest-asvs-cwe CWE-20
+just selftest-ssdf
 ```
 
 Emit a derived ReqIF from the tracked AESCSF core workbook:
@@ -188,7 +160,7 @@ flowchart TD
 
 - `reqif_mcp/` - FastMCP server and current ReqIF evaluation surface
 - `reqif_ingest_cli/` - deterministic artifact intake, extraction, distillation, and ReqIF emission
-- `agents/` - deterministic facts producers, including repo-security dogfooding
+- `agents/` - deterministic facts producers, including repo-security self-testing
 - `opa-bundles/` - example and standards sample policy bundles
 - `samples/` - tracked source artifacts, contracts, and standards fixtures
 - `tests/` - parser, normalization, SARIF, gate, and ingest tests
@@ -284,16 +256,16 @@ Start here:
 - `samples/README.md` - sample inventory and navigation
 - `samples/aemo/README.md` - tracked AEMO source artifacts used by ingest
 - `samples/contracts/README.md` - JSON contracts referenced by docs and tests
-- `samples/standards/README.md` - upstream standards material and derived dogfood baselines
+- `samples/standards/README.md` - upstream standards material and derived self-test baselines
 
-## Dogfooding With GitHub and Copilot
+## Repo Self-Testing With GitHub and Copilot
 
 ```mermaid
 flowchart LR
     PR[Pull request] --> QC[just check]
-    PR --> INGEST[just dogfood-ingest]
-    PR --> ASVS[just dogfood-asvs]
-    PR --> SSDF[just dogfood-ssdf]
+    PR --> INGEST[just selftest-ingest]
+    PR --> ASVS[just selftest-asvs]
+    PR --> SSDF[just selftest-ssdf]
     ASVS --> SARIF[SARIF artifacts]
     SSDF --> SUMMARY[gate summary]
     QC --> COPILOT[Copilot reviews current command surface]
@@ -309,7 +281,7 @@ Recommended CI/CD workflow shape for this repo:
   - trigger when `samples/**`, `reqif_ingest_cli/**`, or `README-reqif-ingest-cli.md` changes
   - emit derived ReqIF from the tracked AESCSF workbooks
   - upload the derived ReqIF as a build artifact for review
-- security standards dogfood
+- security standards self-test
   - trigger when `reqif_mcp/**`, `opa-bundles/**`, `agents/**`, or `samples/standards/**` changes
   - evaluate repo facts against OWASP ASVS and NIST SSDF sample bundles
   - upload gate summaries and SARIF artifacts

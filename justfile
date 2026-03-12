@@ -39,6 +39,9 @@ dogfood-ingest:
     just -f reqif_ingest_cli/justfile smoke-aemo-core
     just -f reqif_ingest_cli/justfile smoke-aemo-toolkit
 
+selftest-ingest:
+    just dogfood-ingest
+
 repo-security-facts out="tmp/repo-security-facts.json":
     mkdir -p "$(dirname {{out}})"
     env UV_CACHE_DIR=.uv-cache uv run python agents/repo_security_agent.py --root . > {{out}}
@@ -55,6 +58,9 @@ dogfood-asvs out="tmp/dogfood-asvs":
         --baseline-id OWASP-ASVS-SAMPLE \
         --baseline-version 5.0.0 \
         --out-dir {{out}}
+
+selftest-asvs out="tmp/dogfood-asvs":
+    just dogfood-asvs {{out}}
 
 dogfood-asvs-cwe cwe out="":
     #!/usr/bin/env bash
@@ -76,6 +82,15 @@ dogfood-asvs-cwe cwe out="":
         --baseline-version 5.0.0 \
         --out-dir "$OUTPUT"
 
+selftest-asvs-cwe cwe out="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -n "{{out}}" ]; then
+        just dogfood-asvs-cwe {{cwe}} "{{out}}"
+    else
+        just dogfood-asvs-cwe {{cwe}}
+    fi
+
 dogfood-ssdf out="tmp/dogfood-ssdf":
     mkdir -p {{out}}
     just repo-security-facts {{out}}/facts.json
@@ -89,9 +104,16 @@ dogfood-ssdf out="tmp/dogfood-ssdf":
         --baseline-version 1.1 \
         --out-dir {{out}}
 
+selftest-ssdf out="tmp/dogfood-ssdf":
+    just dogfood-ssdf {{out}}
+
 dogfood-security:
     just dogfood-asvs
     just dogfood-ssdf
+
+selftest-security:
+    just selftest-asvs
+    just selftest-ssdf
 
 # Docker
 docker-build tag="latest":
