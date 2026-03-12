@@ -1,17 +1,25 @@
 # Samples
 
-Tracked sample assets used by docs and tests.
+Tracked sample assets used by docs, tests, and local dogfooding.
 
-## Source Artifacts
+```mermaid
+flowchart LR
+    A[aemo/] --> ING[reqif_ingest_cli]
+    C[contracts/] --> DOCS[README + tests]
+    S[standards/] --> GATE[dogfood compliance gate]
+```
 
-- `aemo/The AESCSF v2 Core.xlsx`
-- `aemo/V2 AESCSF Toolkit Version V1-1.xlsx`
+## Index
 
-## Contract Fixtures
+- `aemo/README.md` - source workbooks used for deterministic ingest smoke runs
+- `contracts/README.md` - compact JSON fixtures for contracts and examples
+- `standards/README.md` - upstream standards material and derived dogfood baselines
 
-- `contracts/requirement-record.example.json`
-- `contracts/requirement-candidate.example.json`
-- `contracts/agent-facts.example.json`
-- `contracts/opa-output.example.json`
+## Layout
 
-These files are intentionally small and stable so they can be referenced from the README and validated in tests.
+- `aemo/`
+  - tracked AESCSF source artifacts used by `reqif_ingest_cli`
+- `contracts/`
+  - small stable JSON fixtures used by docs and tests
+- `standards/`
+  - upstream standards material plus derived ReqIF samples used by the gate

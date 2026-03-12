@@ -69,9 +69,9 @@ uv run python -m reqif_ingest_cli foundry-config --pretty
 
 See also:
 
-- `samples/contracts/requirement-candidate.example.json`
-- `samples/contracts/agent-facts.example.json`
-- `samples/contracts/opa-output.example.json`
+- `samples/README.md`
+- `samples/aemo/README.md`
+- `samples/contracts/README.md`
 
 ## Current Profiles
 

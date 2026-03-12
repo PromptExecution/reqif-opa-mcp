@@ -9,11 +9,11 @@
 
 ## Status
 
-This repo now has two distinct surfaces:
+This repo has two active surfaces:
 
 - `reqif_mcp/`
-  - FastMCP server for parsing, validating, querying, and exporting existing ReqIF baselines.
-  - Verification events are written to the evidence store.
+  - FastMCP server for parsing, validating, querying, and evaluating existing ReqIF baselines.
+  - Verification events and decision logs are written to the evidence store.
 - `reqif_ingest_cli/`
   - Standalone deterministic ingestion pipeline for source artifacts.
   - First-class XLSX support, offline PDF text extraction, derived ReqIF emission, and optional Azure Foundry review hooks.
@@ -21,29 +21,35 @@ This repo now has two distinct surfaces:
 What exists today:
 
 - ReqIF parse/normalize/query/verification via MCP
-- Deterministic source-to-ReqIF derivation for:
-  - AESCSF core workbook
-  - AESCSF assessment toolkit workbook
-  - generic header-driven XLSX
-  - text-layer PDFs
-  - DOCX and Markdown through `docling`
-- Typed test coverage for parser, normalization, SARIF mapping, and ingest
+- Deterministic source-to-ReqIF derivation for XLSX, text-layer PDF, DOCX, and Markdown
+- Standards sample baselines for OWASP ASVS and NIST SSDF dogfooding
+- Selective compliance-gate filtering by requirement key, attribute, text fragment, or limit
+- Typed test coverage for parser, normalization, SARIF mapping, compliance gate, and ingest
 
 What is still future work:
 
-- Ingest surfaced as MCP tools
-- Requirement diffing between successive source versions
-- Persistent baseline storage beyond in-memory handles
-- End-to-end sample OPA bundles and SARIF upload workflows
-- Richer PDF structure extraction with pre-seeded offline Docling models
+- ingest surfaced as MCP tools
+- normalized diffing between successive source versions
+- persistent baseline storage beyond in-memory handles
+- richer PDF structure extraction with pre-seeded offline Docling models
+- externalized profile/config mapping instead of code-first profile logic
+
+```mermaid
+flowchart LR
+    SRC[Source artifacts] --> ING[reqif_ingest_cli]
+    ING --> REQIF[Derived ReqIF]
+    REQIF --> MCP[reqif_mcp]
+    FACTS[Agent facts] --> GATE[OPA compliance gate]
+    MCP --> GATE
+    GATE --> OUT[SARIF + verification events]
+```
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    S[Source artifacts<br/>xlsx / pdf / docx / md] --> I[reqif_ingest_cli]
-    I --> A[artifact/1]
-    I --> G[document_graph/1]
+    S[Source artifacts<br/>xlsx / pdf / docx / md] --> A[artifact/1]
+    A --> G[document_graph/1]
     G --> C[requirement_candidate/1]
     C --> R[Derived ReqIF XML]
 
@@ -51,16 +57,64 @@ flowchart LR
     F[Agent facts JSON] --> O[OPA evaluation]
     M --> O
     O --> SARIF[SARIF reports]
-    O --> LOGS[Decision logs / evidence]
+    O --> LOGS[Verification events<br/>decision logs]
 ```
 
 The boundary is deliberate:
 
 - ingestion is standalone and deterministic first
 - ReqIF remains a derived artifact
-- OPA stays the gate, not the extractor
+- agents produce facts, not pass/fail decisions
+- OPA remains the gate and policy authority
+
+## Gate Criteria Model (beyond pass/fail)
+
+The compliance gate is not a single boolean check. It evaluates three layers:
+
+- `meta_policy`
+  - baseline sanity, subtype selection, filter results, facts shape, and bundle/package alignment
+- `processing`
+  - OPA execution, SARIF generation, verification-event writes, and other runtime failures
+- `policy`
+  - the actual requirement decision returned by OPA
+
+Each OPA decision carries:
+
+- overall `status`
+- weighted `criteria[]`
+- human-readable `reasons[]`
+- policy provenance in `policy`
+
+```mermaid
+flowchart TD
+    R[Selected requirement] --> MP{Meta-policy valid?}
+    MP -- no --> MFAIL[Hard gate failure<br/>EMPTY_BASELINE / EMPTY_SELECTION / etc.]
+    MP -- yes --> OPA[OPA decision]
+    OPA --> CRIT[criteria[] + reasons[] + policy provenance]
+    CRIT --> PROC{Processing healthy?}
+    PROC -- no --> PFAIL[Hard gate failure<br/>OPA / SARIF / verification error]
+    PROC -- yes --> DEC{Decision status}
+    DEC -- fail/high severity --> GFAIL[Gate failure]
+    DEC -- pass or acceptable --> GPASS[Gate passes]
+    DEC -- conditional / blocked / inconclusive --> GREVIEW[Review path]
+```
+
+Useful filter controls when dogfooding or triaging:
+
+- `--requirement-key`
+- `--attribute-filter`
+- `--text-contains`
+- `--limit`
 
 ## Quick Start
+
+```mermaid
+flowchart LR
+    A[Install deps] --> B[Run repo checks]
+    B --> C[Serve MCP]
+    B --> D[Smoke ingest]
+    B --> E[Dogfood standards gate]
+```
 
 Root repo:
 
@@ -70,15 +124,22 @@ just check
 just serve
 ```
 
-Ingest CLI:
+Ingest and derived ReqIF smoke:
 
 ```bash
 just -f reqif_ingest_cli/justfile check
-just -f reqif_ingest_cli/justfile smoke-aemo-core
-just -f reqif_ingest_cli/justfile smoke-aemo-toolkit
+just dogfood-ingest
 ```
 
-Emit a derived ReqIF from the sample AESCSF core workbook:
+Security standards dogfood:
+
+```bash
+just dogfood-asvs
+just dogfood-asvs-cwe CWE-20
+just dogfood-ssdf
+```
+
+Emit a derived ReqIF from the tracked AESCSF core workbook:
 
 ```bash
 uv run python -m reqif_ingest_cli emit-reqif \
@@ -90,17 +151,47 @@ uv run python -m reqif_ingest_cli emit-reqif \
 
 ## Repo Map
 
+```mermaid
+flowchart TD
+    ROOT[repo root] --> MCP[reqif_mcp/]
+    ROOT --> ING[reqif_ingest_cli/]
+    ROOT --> AGENTS[agents/]
+    ROOT --> BUNDLES[opa-bundles/]
+    ROOT --> SAMPLES[samples/]
+    ROOT --> TESTS[tests/]
+
+    AGENTS --> GATE[repo-security-agent]
+    BUNDLES --> GATE
+    SAMPLES --> ING
+    SAMPLES --> TESTS
+```
+
 - `reqif_mcp/` - FastMCP server and current ReqIF evaluation surface
 - `reqif_ingest_cli/` - deterministic artifact intake, extraction, distillation, and ReqIF emission
-- `README-reqif-ingest-cli.md` - CLI-specific usage and profiles
-- `samples/` - tracked sample inputs and contract fixtures
-- `tests/` - parser, normalization, SARIF, and ingest tests
+- `agents/` - deterministic facts producers, including repo-security dogfooding
+- `opa-bundles/` - example and standards sample policy bundles
+- `samples/` - tracked source artifacts, contracts, and standards fixtures
+- `tests/` - parser, normalization, SARIF, gate, and ingest tests
 
-## Current Capabilities
+## ReqIF MCP Server
 
-### ReqIF MCP Server
+```mermaid
+sequenceDiagram
+    participant Client
+    participant MCP as reqif_mcp
+    participant Store as in-memory baseline store
+    participant OPA as opa
+    participant Evidence as evidence_store
 
-Available tools in `reqif_mcp/server.py`:
+    Client->>MCP: reqif_parse / reqif_validate / reqif_query
+    MCP->>Store: normalize and store baseline handle
+    Client->>MCP: reqif_write_verification
+    MCP->>OPA: evaluate requirement against facts
+    OPA-->>MCP: decision
+    MCP->>Evidence: verification event + decision log
+```
+
+Current tool surface in `reqif_mcp/server.py`:
 
 - `reqif_parse`
 - `reqif_validate`
@@ -115,7 +206,17 @@ Current implementation notes:
 - HTTP and STDIO transports are supported
 - evaluation and evidence are separate from ingestion
 
-### Standalone Ingest CLI
+## Standalone Ingest CLI
+
+```mermaid
+flowchart LR
+    REG[register-artifact] --> EXT[extract]
+    EXT --> DG[document_graph]
+    DG --> DIST[distill]
+    DIST --> RC[requirement_candidate]
+    RC --> EMIT[emit-reqif]
+    CFG[foundry-config] -. optional review hook .-> DIST
+```
 
 Available commands in `reqif_ingest_cli/__main__.py`:
 
@@ -139,86 +240,133 @@ Current implementation notes:
 - XLSX is first-class and deterministic
 - PDF prefers `pypdf` for offline text-layer extraction
 - `docling` remains the richer path for DOCX and Markdown
-- Azure Foundry integration is optional and not part of the deterministic path
+- Azure Foundry integration is optional and not part of the deterministic first pass
 
 See `README-reqif-ingest-cli.md` for command details.
 
-## Samples
+## Samples and Fixtures
 
-Tracked sample source artifacts:
+The main README now links to sample indexes instead of carrying inline sample payloads.
 
-- `samples/aemo/The AESCSF v2 Core.xlsx`
-- `samples/aemo/V2 AESCSF Toolkit Version V1-1.xlsx`
-- `evidence_store/toolkits/aemo/aescsf-2025-overview.pdf`
+```mermaid
+flowchart TD
+    S[samples/] --> A[aemo/]
+    S --> C[contracts/]
+    S --> ST[standards/]
 
-Tracked contract fixtures:
+    A --> ING[ingest smoke inputs]
+    C --> DOCS[README + tests]
+    ST --> DOGFOOD[ASVS / SSDF gate samples]
+```
 
-- `samples/contracts/requirement-record.example.json`
-- `samples/contracts/requirement-candidate.example.json`
-- `samples/contracts/agent-facts.example.json`
-- `samples/contracts/opa-output.example.json`
+Start here:
 
-Existing ReqIF fixture:
-
-- `tests/fixtures/sample_baseline.reqif`
-
-These sample JSON files are intentionally reusable in tests and docs, so the README does not need to carry large inline blobs.
+- `samples/README.md` - sample inventory and navigation
+- `samples/aemo/README.md` - tracked AEMO source artifacts used by ingest
+- `samples/contracts/README.md` - JSON contracts referenced by docs and tests
+- `samples/standards/README.md` - upstream standards material and derived dogfood baselines
 
 ## Dogfooding With GitHub and Copilot
 
-Recommended CI/CD workflows for this repo:
+```mermaid
+flowchart LR
+    PR[Pull request] --> QC[just check]
+    PR --> INGEST[just dogfood-ingest]
+    PR --> ASVS[just dogfood-asvs]
+    PR --> SSDF[just dogfood-ssdf]
+    ASVS --> SARIF[SARIF artifacts]
+    SSDF --> SUMMARY[gate summary]
+    QC --> COPILOT[Copilot reviews current command surface]
+```
 
-- Pull request quality gate
+Recommended CI/CD workflow shape for this repo:
+
+- pull request quality gate
   - run `just check`
   - run `just check-ingest`
   - fail fast on parser, schema, or ingest regressions
-- Sample artifact smoke run
+- sample artifact smoke run
   - trigger when `samples/**`, `reqif_ingest_cli/**`, or `README-reqif-ingest-cli.md` changes
   - emit derived ReqIF from the tracked AESCSF workbooks
   - upload the derived ReqIF as a build artifact for review
-- Future SARIF dogfood
-  - trigger when `reqif_mcp/**`, `opa-bundles/**`, or `samples/contracts/**` changes
-  - evaluate sample facts against example bundles
-  - upload SARIF to GitHub code scanning
-- Future baseline drift check
+- security standards dogfood
+  - trigger when `reqif_mcp/**`, `opa-bundles/**`, `agents/**`, or `samples/standards/**` changes
+  - evaluate repo facts against OWASP ASVS and NIST SSDF sample bundles
+  - upload gate summaries and SARIF artifacts
+- baseline drift check
   - trigger on changes to tracked source documents
   - emit ReqIF and compare normalized requirements against the last known baseline
 
 Recommended Copilot usage in this repo:
 
 - treat `justfile` and `reqif_ingest_cli/justfile` as the public command surface
-- use `samples/contracts/*.json` instead of inventing ad hoc JSON examples
-- update tests first when changing parser or ingest behavior
+- reuse `samples/contracts/*.json` rather than inventing ad hoc JSON examples
+- update tests first when changing parser, gate, or ingest behavior
 - keep raw ReqIF XML generation behind the emitter instead of hand-editing XML
 
-## Data Contract Examples
+## Data Contracts
 
-Use the tracked sample JSON files instead of copying fragments out of the README:
+```mermaid
+flowchart LR
+    ART[artifact/1] --> DG[document_graph/1]
+    DG --> CAND[requirement_candidate/1]
+    CAND --> REQ[requirement record]
+    FACTS[agent facts] --> OPA[OPA decision]
+    REQ --> OPA
+    OPA --> SARIF[SARIF result]
+```
 
-- requirement record: `samples/contracts/requirement-record.example.json`
-- derived candidate: `samples/contracts/requirement-candidate.example.json`
-- agent facts: `samples/contracts/agent-facts.example.json`
-- OPA output: `samples/contracts/opa-output.example.json`
+Use the tracked sample files instead of copying large JSON blobs into the README:
+
+- `samples/contracts/requirement-record.example.json`
+- `samples/contracts/requirement-candidate.example.json`
+- `samples/contracts/agent-facts.example.json`
+- `samples/contracts/opa-output.example.json`
+
+Contract descriptions and file-level notes live in `samples/contracts/README.md`.
 
 ## Standards and Formats
+
+```mermaid
+flowchart LR
+    ASVS[OWASP ASVS] --> SREQ[Derived ReqIF sample]
+    SSDF[NIST SSDF] --> SREQ
+    SREQ --> OPA[OPA bundles]
+    OPA --> SARIF[SARIF / gate output]
+    REQIF[ReqIF 1.2] --> MCP[reqif_mcp]
+    SARIF --> GITHUB[GitHub code scanning]
+```
+
+Implemented and tracked here:
 
 - ReqIF 1.2
 - SARIF v2.1.0
 - OPA bundles and decision logs
 - FastMCP
+- OWASP ASVS sample baseline and bundle
+- NIST SSDF sample baseline and bundle
 
-## TODO
+## Roadmap
+
+```mermaid
+flowchart LR
+    NOW[Current] --> NEXT1[Expose ingest as MCP tools]
+    NEXT1 --> NEXT2[Externalize profile mappings]
+    NEXT2 --> NEXT3[Normalized baseline diffing]
+    NEXT3 --> LATER1[Persistent baseline storage]
+    NEXT3 --> LATER2[Richer offline PDF structure extraction]
+```
 
 Near term:
 
 - expose ingest as MCP tools
 - externalize document profiles and header maps from Python into config
 - implement normalized requirement diffing across source versions
-- add committed example OPA bundles and end-to-end SARIF smoke coverage
+- publish derived ReqIF, gate summaries, and SARIF artifacts in CI
 
 Later:
 
 - persistent baseline storage
 - richer PDF structure extraction with preloaded offline models
 - document-family specific distillation profiles beyond AESCSF
-- CI workflows that publish derived ReqIF and SARIF artifacts on every PR
+- broader repo-security fact extraction and policy coverage
