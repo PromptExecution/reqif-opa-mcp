@@ -3,6 +3,24 @@
 This repo now includes a standalone ingestion surface at `reqif_ingest_cli/`.
 It keeps source-document intake separate from the existing `reqif_mcp` ReqIF parser and policy server.
 
+Executive view:
+
+- this is the deterministic artifact-to-ReqIF derivation pipeline
+- its purpose is traceable extraction, not policy judgement
+
+Engineer view:
+
+- use this surface when the starting point is an artifact such as XLSX, PDF, DOCX, or Markdown
+- use `reqif_mcp` when the starting point is already ReqIF
+
+```mermaid
+flowchart LR
+    ART[Source artifact] --> EXT[Deterministic extraction]
+    EXT --> DG[document_graph]
+    DG --> CAND[requirement_candidate]
+    CAND --> REQIF[Derived ReqIF]
+```
+
 ## Scope
 
 - Deterministic first pass only.
@@ -12,12 +30,31 @@ It keeps source-document intake separate from the existing `reqif_mcp` ReqIF par
 - ReqIF stays derived: `artifact -> document_graph -> requirement_candidate -> reqif`.
 - Optional LLM quality-eval hooks use an Azure Foundry/OpenAI-compatible adapter and are disabled by default.
 
+```mermaid
+flowchart TD
+    INPUT[Artifact input] --> HASH[Register hash and metadata]
+    HASH --> STRUCTURE[Extract structure]
+    STRUCTURE --> DISTILL[Deterministic distillation]
+    DISTILL --> OUTPUT[Emit derived ReqIF]
+    OUTPUT -. optional review .-> LLM[Foundry quality hook]
+```
+
 ## Commands
 
 Use the local justfile:
 
 ```bash
 just -f reqif_ingest_cli/justfile --list
+```
+
+```mermaid
+flowchart LR
+    TEST[test] --> LINT[lint]
+    LINT --> TYPE[typecheck]
+    TYPE --> ARTIFACT[artifact]
+    ARTIFACT --> EXTRACT[extract]
+    EXTRACT --> DISTILL[distill]
+    DISTILL --> EMIT[emit]
 ```
 
 Common commands:
@@ -60,12 +97,36 @@ uv run python -m reqif_ingest_cli emit-reqif \
 uv run python -m reqif_ingest_cli foundry-config --pretty
 ```
 
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI as reqif_ingest_cli
+    participant FS as source artifact
+    participant Out as JSON / ReqIF output
+
+    User->>CLI: register-artifact
+    CLI->>FS: hash + inspect metadata
+    User->>CLI: extract
+    CLI->>Out: document_graph
+    User->>CLI: distill
+    CLI->>Out: requirement_candidate
+    User->>CLI: emit-reqif
+    CLI->>Out: derived ReqIF
+```
+
 ## What It Emits
 
 - `artifact/1`: immutable source hash, media type, file format, source path, profile
 - `document_graph/1`: sections, rows, paragraphs, anchors, semantic IDs
 - `requirement_candidate/1`: deterministic candidate text, rationale, rule ID, provenance
 - ReqIF XML: minimal derived baseline that round-trips through the current parser
+
+```mermaid
+flowchart LR
+    A[artifact/1] --> G[document_graph/1]
+    G --> C[requirement_candidate/1]
+    C --> R[ReqIF XML]
+```
 
 See also:
 
@@ -74,6 +135,16 @@ See also:
 - `samples/contracts/README.md`
 
 ## Current Profiles
+
+```mermaid
+flowchart LR
+    XLSX[XLSX] --> CORE[aescsf_core_v2]
+    XLSX --> TOOLKIT[aescsf_toolkit_v1_1]
+    XLSX --> GENERIC[generic_xlsx_table]
+    PDF[PDF] --> PDFP[pdf_docling_v1]
+    DOCX[DOCX] --> DOCXP[docx_docling_v1]
+    MD[Markdown] --> MDP[markdown_docling_v1]
+```
 
 - `aescsf_core_v2`
   - Detects the flat AESCSF core workbook layout.
@@ -109,9 +180,25 @@ uv run python -m reqif_ingest_cli foundry-config --pretty
 
 The adapter is for review and remapping only. It is not part of the deterministic first pass.
 
+```mermaid
+flowchart LR
+    DISTILL[Deterministic distillation] --> REVIEW{Foundry configured?}
+    REVIEW -- no --> DONE[Use deterministic output]
+    REVIEW -- yes --> QA[Quality review / remap hints]
+    QA --> DONE
+```
+
 ## Current Gaps
 
 - no baseline diff command yet
 - no ingest MCP tool surface yet
 - AESCSF mappings are still code-first rather than externalized config
 - rich PDF structure extraction still depends on offline Docling model availability
+
+```mermaid
+flowchart LR
+    NOW[Current CLI] --> NEXT1[MCP tool surface]
+    NOW --> NEXT2[Baseline diffing]
+    NOW --> NEXT3[Externalized profile config]
+    NOW --> NEXT4[Richer offline PDF structure]
+```

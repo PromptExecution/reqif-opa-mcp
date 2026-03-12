@@ -9,7 +9,24 @@
 
 ## Status
 
-This repo has two active surfaces:
+Executive view:
+
+- This repo turns governed source artifacts into traceable compliance decisions.
+- It keeps extraction deterministic, keeps ReqIF derived, and keeps policy judgement in OPA.
+
+Engineer view:
+
+- There are two active surfaces: `reqif_mcp/` for ReqIF-centric gate operations and `reqif_ingest_cli/` for source-to-ReqIF derivation.
+
+```mermaid
+flowchart LR
+    SRC[Governed source artifacts] --> DERIVE[Deterministic derivation]
+    DERIVE --> REQIF[Derived ReqIF baseline]
+    REQIF --> OPA[OPA policy gate]
+    OPA --> EVIDENCE[Traceable evidence output]
+```
+
+Surface summary:
 
 - `reqif_mcp/`
   - FastMCP server for parsing, validating, querying, and evaluating existing ReqIF baselines.
@@ -110,10 +127,13 @@ Useful filter controls when dogfooding or triaging:
 
 ```mermaid
 flowchart LR
-    A[Install deps] --> B[Run repo checks]
-    B --> C[Serve MCP]
-    B --> D[Smoke ingest]
-    B --> E[Dogfood standards gate]
+    A[Install deps] --> B[Engineer path]
+    A --> X[Executive path]
+    B --> C[Run checks]
+    C --> D[Serve MCP]
+    C --> E[Smoke ingest]
+    C --> F[Dogfood standards gate]
+    X --> G[Read status + architecture + roadmap]
 ```
 
 Root repo:
