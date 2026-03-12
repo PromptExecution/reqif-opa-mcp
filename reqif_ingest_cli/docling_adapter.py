@@ -52,9 +52,14 @@ def extract_docling_document(
         from docling.document_converter import DocumentConverter, PdfFormatOption
 
         if suffix == ".pdf":
-            pdf_graph = _extract_pdf_with_pypdf(resolved, artifact, None)
-            if pdf_graph.nodes:
-                return Success(pdf_graph)
+            pdf_graph = None
+            try:
+                pdf_graph = _extract_pdf_with_pypdf(resolved, artifact, None)
+            except Exception:
+                pdf_graph = None
+            else:
+                if pdf_graph.nodes:
+                    return Success(pdf_graph)
             try:
                 converter = DocumentConverter(
                     allowed_formats=[InputFormat.PDF],
