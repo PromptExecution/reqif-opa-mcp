@@ -94,6 +94,7 @@ This project is both a system and a playbook. If you are here to understand *cap
         <li><strong>Data contracts</strong> define the ReqIF, facts, OPA inputs, and SARIF output formats.</li>
         <li><strong>Architecture</strong> shows how agents, OPA, and the MCP server interlock.</li>
         <li><strong>Evidence store</strong> preserves traceability for audits.</li>
+        <li><strong>ReqIF ingest CLI</strong> covers deterministic source ingestion and derived ReqIF emission. See <a href="README-reqif-ingest-cli.md"><strong>README-reqif-ingest-cli.md</strong></a>.</li>
       </ul>
     </td>
   </tr>
@@ -240,13 +241,15 @@ Schema `facts/1` (typed, evidence-addressable):
   ],
   "agent": {"name":"cyber-agent","version":"x.y","rubric_hint":"cyber.access_control.v3"}
 }
+```
 
 ### OPA Evaluation Input (composed)
 
-OPA input = { requirement, facts, context }.
+OPA input = `{ requirement, facts, context }`.
 
 OPA output MUST be:
 
+```json
 {
   "status": "pass|fail|conditional_pass|inconclusive|not_applicable|blocked|waived",
   "score": 0.0,
@@ -257,6 +260,7 @@ OPA output MUST be:
   "reasons": ["..."],
   "policy": {"bundle":"org/cyber","revision":"...", "hash":"..."}
 }
+```
 
 
 Decision logs MUST be enabled for audit.

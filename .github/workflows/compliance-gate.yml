@@ -2,22 +2,22 @@ name: Compliance Gate
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   compliance-gate:
     runs-on: ubuntu-latest
 
     permissions:
-      # Required for uploading SARIF to GitHub Security
-      security-events: write
-      # Required for checking out code
       contents: read
-      # Required for commenting on PRs
-      pull-requests: write
       issues: write
+      pull-requests: write
+      security-events: write
 
     steps:
       - name: Checkout code
@@ -26,12 +26,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
-          version: 'latest'
+          version: "latest"
 
       - name: Install OPA
         run: |
@@ -41,334 +41,49 @@ jobs:
           opa version
 
       - name: Install project dependencies
-        run: |
-          uv sync
-
-      - name: Start FastMCP server in background
-        run: |
-          # Start server with log capture
-          uv run python -m reqif_mcp --http --host 127.0.0.1 --port 8000 > mcp_server.log 2>&1 &
-          SERVER_PID=$!
-          echo $SERVER_PID > mcp_server.pid
-          echo "Started server with PID: $SERVER_PID"
-
-          # Wait for server to start with retry logic
-          MAX_ATTEMPTS=5
-          RETRY_DELAY=2
-          ATTEMPT=1
-
-          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-            echo "Health check attempt $ATTEMPT of $MAX_ATTEMPTS..."
-
-            # Check if server process is still running
-            if ! kill -0 $SERVER_PID 2>/dev/null; then
-              echo "❌ Server process died during startup"
-              echo "=== Server Log ==="
-              cat mcp_server.log
-              exit 1
-            fi
-
-            # Try health check
-            if curl -f -s http://127.0.0.1:8000/health | jq -e '.status == "ok" and .mcp.ready == true' > /dev/null 2>&1; then
-              echo "✅ Server is ready!"
-              curl -s http://127.0.0.1:8000/health | jq .
-              break
-            fi
-
-            if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-              echo "❌ Health check timeout after $MAX_ATTEMPTS attempts"
-              echo "=== Server Log ==="
-              cat mcp_server.log
-              exit 1
-            fi
-
-            echo "Server not ready, waiting ${RETRY_DELAY}s before retry..."
-            sleep $RETRY_DELAY
-            ATTEMPT=$((ATTEMPT + 1))
-          done
-
-      - name: Parse ReqIF baseline
-        id: parse_baseline
-        run: |
-          # For this example, we're using a sample baseline from tests
-          # In a real CI pipeline, this would be your actual requirements baseline
-          REQIF_B64=$(base64 -w 0 tests/fixtures/sample_baseline.reqif)
-
-          # Call MCP tool to parse ReqIF (via FastMCP HTTP endpoint)
-          # This is a simplified example - in production you'd use proper MCP client
-          # For now, we'll use the Python API directly
-          # Parse and normalize ReqIF, save to file for subsequent steps
-          uv run python -c "
-          from reqif_mcp.reqif_parser import parse_reqif_xml
-          from reqif_mcp.normalization import normalize_reqif
-          import base64
-          import json
-          import sys
-          from returns.result import Failure
-          from ulid import ULID
-
-          xml_b64 = '''$REQIF_B64'''
-          try:
-              xml_str = base64.b64decode(xml_b64).decode('utf-8')
-              parse_result = parse_reqif_xml(xml_str)
-              if isinstance(parse_result, Failure):
-                  print(f'Parse error: {parse_result.failure()}', file=sys.stderr)
-                  sys.exit(1)
-
-              reqif_data = parse_result.unwrap()
-              norm_result = normalize_reqif(reqif_data, 'CI-BASELINE-2024', '1.0.0')
-              if isinstance(norm_result, Failure):
-                  print(f'Normalization error: {norm_result.failure()}', file=sys.stderr)
-                  sys.exit(1)
-
-              requirements = norm_result.unwrap()
-              handle = str(ULID())
-
-              # Save requirements to file for subsequent steps
-              with open('baseline_requirements.json', 'w') as f:
-                  json.dump({'handle': handle, 'requirements': requirements}, f, indent=2)
-
-              print(f'Parsed {len(requirements)} requirements')
-              print(f'Baseline handle: {handle}')
-          except Exception as e:
-              print(f'Error: {e}', file=sys.stderr)
-              sys.exit(1)
-          "
-
-          HANDLE=$(jq -r '.handle' baseline_requirements.json)
-          echo "BASELINE_HANDLE=$HANDLE" >> $GITHUB_OUTPUT
-          echo "Baseline handle: $HANDLE"
-
-      - name: Query requirements by subtype
-        id: query_requirements
-        run: |
-          # Query CYBER requirements from the baseline file
-          uv run python -c "
-          import json
-          import sys
-
-          # Load baseline from file
-          with open('baseline_requirements.json') as f:
-              baseline_data = json.load(f)
-
-          requirements = baseline_data['requirements']
-
-          # Filter for CYBER requirements
-          cyber_reqs = [
-              req for req in requirements
-              if 'CYBER' in req.get('subtypes', [])
-          ]
-
-          # Save filtered requirements to file for next step
-          with open('requirements.json', 'w') as f:
-              json.dump(cyber_reqs, f, indent=2)
-
-          print(f'Found {len(cyber_reqs)} CYBER requirements')
-          for req in cyber_reqs:
-              print(f\"  - {req.get('key', req.get('uid'))}\")
-          "
+        run: uv sync
 
       - name: Run agent to produce facts
-        id: run_agent
+        id: agent
+        continue-on-error: true
         run: |
-          # Run stub agent for CYBER subtype
-          # In production, this would be your actual agent analyzing artifacts
-          uv run python agents/stub_agent.py --subtype CYBER > agent_facts.json
+          set +e
+          uv run python agents/stub_agent.py --subtype CYBER > agent_facts.json 2> agent_facts.stderr
+          status=$?
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          if [ "$status" -eq 0 ]; then
+            echo "Agent facts generated"
+            cat agent_facts.json
+          else
+            echo "Agent fact generation failed with exit code $status"
+            cat agent_facts.stderr || true
+          fi
 
-          echo "Agent facts generated"
-          cat agent_facts.json
-
-      - name: Evaluate requirements with OPA
+      - name: Run compliance gate
         id: evaluate
-        run: |
-          # For each requirement, evaluate with OPA
-          uv run python -c "
-          from reqif_mcp.opa_evaluator import evaluate_requirement
-          from reqif_mcp.sarif_producer import generate_sarif_report, write_sarif_file
-          from returns.result import Failure
-          import json
-          import sys
-          from pathlib import Path
-          from ulid import ULID
-
-          # Load baseline from file
-          with open('baseline_requirements.json') as f:
-              baseline_data = json.load(f)
-
-          requirements = baseline_data['requirements']
-
-          # Load agent facts
-          with open('agent_facts.json') as f:
-              facts = json.load(f)
-
-          # Filter to CYBER requirements
-          cyber_reqs = [r for r in requirements if 'CYBER' in r.get('subtypes', [])]
-
-          # Evaluate each requirement
-          gate_failed = False
-          all_results = []
-
-          for req in cyber_reqs:
-              evaluation_id = str(ULID())
-
-              # Evaluate with OPA
-              eval_result = evaluate_requirement(
-                  requirement=req,
-                  facts=facts,
-                  bundle_path='opa-bundles/example',
-                  context={'target': facts['target']},
-                  enable_decision_logging=True
-              )
-
-              if isinstance(eval_result, Failure):
-                  print(f'Evaluation failed for {req[\"uid\"]}: {eval_result.failure()}', file=sys.stderr)
-                  continue
-
-              decision = eval_result.unwrap()
-
-              # Generate SARIF report
-              sarif_result = generate_sarif_report(req, decision, facts, evaluation_id)
-              if isinstance(sarif_result, Failure):
-                  print(f'SARIF generation failed: {sarif_result.failure()}', file=sys.stderr)
-                  continue
-
-              sarif_report = sarif_result.unwrap()
-
-              # Save SARIF to evidence store
-              sarif_path = Path(f'evidence_store/sarif/{evaluation_id}.sarif')
-              write_result = write_sarif_file(sarif_report, sarif_path)
-              if isinstance(write_result, Failure):
-                  print(f'SARIF write failed: {write_result.failure()}', file=sys.stderr)
-                  continue
-
-              # Collect results
-              all_results.append({
-                  'requirement_uid': req['uid'],
-                  'requirement_key': req.get('key', ''),
-                  'status': decision['status'],
-                  'score': decision['score'],
-                  'evaluation_id': evaluation_id,
-                  'sarif_path': str(sarif_path)
-              })
-
-              # Check for failures (fail gate on high severity failures)
-              severity = req.get('attrs', {}).get('severity', 'medium')
-              if decision['status'] == 'fail' and severity in ['high', 'critical']:
-                  gate_failed = True
-                  print(f\"⚠️  COMPLIANCE FAILURE: {req.get('key', req['uid'])} - {decision.get('reasons', ['No reason provided'])[0]}\")
-
-          # Save results summary
-          with open('compliance_results.json', 'w') as f:
-              json.dump(all_results, f, indent=2)
-
-          # Print summary
-          print(f\"\\nCompliance Gate Summary:\")
-          print(f\"  Total requirements evaluated: {len(all_results)}\")
-          print(f\"  Passed: {sum(1 for r in all_results if r['status'] == 'pass')}\")
-          print(f\"  Failed: {sum(1 for r in all_results if r['status'] == 'fail')}\")
-          print(f\"  Conditional: {sum(1 for r in all_results if r['status'] == 'conditional_pass')}\")
-          print(f\"  Inconclusive: {sum(1 for r in all_results if r['status'] == 'inconclusive')}\")
-
-          # Set exit code
-          if gate_failed:
-              print(f\"\\n❌ Compliance gate FAILED - fix high-severity failures above\")
-              sys.exit(1)
-          else:
-              print(f\"\\n✅ Compliance gate PASSED\")
-          "
-
-      - name: Merge SARIF reports
         if: always()
         run: |
-          # Merge all SARIF files into single report for GitHub upload
-          uv run python -c "
-          import json
-          from pathlib import Path
+          uv run python -m reqif_mcp.compliance_gate \
+            --reqif-path tests/fixtures/sample_baseline.reqif \
+            --facts-path agent_facts.json \
+            --bundle-path opa-bundles/example \
+            --subtype CYBER \
+            --package cyber.access_control.v3 \
+            --baseline-id CI-BASELINE-2024 \
+            --baseline-version 1.0.0 \
+            --out-dir compliance_gate_output
 
-          sarif_files = list(Path('evidence_store/sarif').glob('*.sarif'))
-
-          if not sarif_files:
-              print('No SARIF files to merge')
-              # Create empty SARIF for upload
-              empty_sarif = {
-                  '\$schema': 'https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json',
-                  'version': '2.1.0',
-                  'runs': []
-              }
-              with open('merged.sarif', 'w') as f:
-                  json.dump(empty_sarif, f, indent=2)
-          else:
-              # Load all SARIF files
-              all_runs = []
-              for sarif_file in sarif_files:
-                  with open(sarif_file) as f:
-                      sarif = json.load(f)
-                      all_runs.extend(sarif.get('runs', []))
-
-              # Create merged SARIF
-              merged_sarif = {
-                  '\$schema': 'https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json',
-                  'version': '2.1.0',
-                  'runs': all_runs
-              }
-
-              # Write merged SARIF
-              with open('merged.sarif', 'w') as f:
-                  json.dump(merged_sarif, f, indent=2, ensure_ascii=False)
-
-              print(f'Merged {len(sarif_files)} SARIF files into merged.sarif')
-          "
+      - name: Append compliance summary to job summary
+        if: always() && hashFiles('compliance_gate_output/compliance_summary.md') != ''
+        run: cat compliance_gate_output/compliance_summary.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload SARIF to GitHub Security
-        if: always() && hashFiles('merged.sarif') != ''
+        if: always() && hashFiles('compliance_gate_output/merged.sarif') != ''
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: merged.sarif
+          sarif_file: compliance_gate_output/merged.sarif
           category: compliance-gate
-
-      - name: Write verification events
-        if: always()
-        run: |
-          # Write verification events to evidence store
-          uv run python -c "
-          import json
-          from pathlib import Path
-          from reqif_mcp.server import reqif_write_verification
-
-          # Load compliance results
-          results_file = Path('compliance_results.json')
-          if not results_file.exists():
-              print('No compliance results to record')
-              exit(0)
-
-          with open(results_file) as f:
-              results = json.load(f)
-
-          # Write verification event for each evaluation
-          for result in results:
-              event = {
-                  'requirement_uid': result['requirement_uid'],
-                  'target': {
-                      'repo': '${{ github.repository }}',
-                      'commit': '${{ github.sha }}',
-                      'build': '${{ github.run_id }}'
-                  },
-                  'decision': {
-                      'status': result['status'],
-                      'score': result['score'],
-                      'confidence': 0.8
-                  },
-                  'sarif_ref': result['sarif_path']
-              }
-
-              # Call tool to write verification event
-              tool_result = reqif_write_verification(event)
-              if 'error' in tool_result:
-                  print(f\"Warning: Failed to write verification event: {tool_result['error']}\")
-
-          print(f'Wrote {len(results)} verification events')
-          "
 
       - name: Upload evidence store artifacts
         if: always()
@@ -376,21 +91,10 @@ jobs:
         with:
           name: compliance-evidence
           path: |
-            evidence_store/
-            compliance_results.json
-            requirements.json
+            compliance_gate_output/
             agent_facts.json
-            merged.sarif
-            mcp_server.log
+            agent_facts.stderr
           retention-days: 90
-
-      - name: Stop FastMCP server
-        if: always()
-        run: |
-          if [ -f mcp_server.pid ]; then
-            kill $(cat mcp_server.pid) || true
-            rm mcp_server.pid
-          fi
 
       - name: Comment on PR with compliance results
         if: github.event_name == 'pull_request' && always()
@@ -399,42 +103,87 @@ jobs:
           script: |
             const fs = require('fs');
 
-            // Load compliance results
+            let summary;
             let results = [];
             try {
-              results = JSON.parse(fs.readFileSync('compliance_results.json', 'utf8'));
+              summary = JSON.parse(
+                fs.readFileSync('compliance_gate_output/compliance_summary.json', 'utf8')
+              );
             } catch (e) {
-              console.log('No compliance results found');
+              console.log('No compliance summary found');
               return;
             }
 
-            // Build summary table
+            try {
+              results = JSON.parse(
+                fs.readFileSync('compliance_gate_output/compliance_results.json', 'utf8')
+              );
+            } catch (e) {
+              results = [];
+            }
+
+            const pullNumber = context.payload.pull_request?.number ?? context.issue.number;
+            if (!pullNumber) {
+              core.info('No pull request number found; skipping PR comment.');
+              return;
+            }
+
             const passed = results.filter(r => r.status === 'pass').length;
             const failed = results.filter(r => r.status === 'fail').length;
             const conditional = results.filter(r => r.status === 'conditional_pass').length;
             const total = results.length;
+            const statusIcon = summary.gate_status === 'passed' ? '✅' : '❌';
 
-            const status = failed > 0 ? '❌' : '✅';
+            const formatIssues = (title, issues) => {
+              if (!issues || issues.length === 0) {
+                return '';
+              }
+              const lines = issues.map(issue => {
+                const requirement = issue.requirement_key || issue.requirement_uid || 'global';
+                return `- ${issue.code} [${requirement}] ${issue.message}`;
+              });
+              return `\n**${title}:**\n${lines.join('\n')}\n`;
+            };
 
-            const comment = `## ${status} Compliance Gate Results
+            const detailRows = results.length > 0
+              ? results.map(
+                  r => `| ${r.requirement_key || r.requirement_uid} | ${r.status} | ${r.score.toFixed(2)} |`
+                ).join('\n')
+              : '| none | n/a | n/a |';
+
+            const comment = `## ${statusIcon} Compliance Gate Results
 
             **Summary:**
-            - Total requirements evaluated: ${total}
+            - Gate status: ${summary.gate_status}
+            - Agent exit code: ${'${{ steps.agent.outputs.exit_code }}' || 'unknown'}
+            - Baseline requirements: ${summary.baseline_requirement_count}
+            - Selected requirements: ${summary.selected_requirement_count}
+            - Attempted evaluations: ${summary.attempted_evaluations}
+            - Successful evaluations: ${summary.successful_evaluations}
+            - Verification events written: ${summary.verification_events_written}
+            - Meta-policy failures: ${summary.meta_policy_failure_count}
+            - Processing failures: ${summary.processing_failure_count}
+            - Gate failures: ${summary.gate_failure_count}
             - ✅ Passed: ${passed}
             - ❌ Failed: ${failed}
-            - ⚠️  Conditional: ${conditional}
+            - ⚠️ Conditional: ${conditional}
+            - Total requirements evaluated: ${total}
+
+            ${formatIssues('Meta-policy failures', summary.meta_policy_failures)}
+            ${formatIssues('Processing failures', summary.processing_failures)}
+            ${formatIssues('Gate failures', summary.gate_failures)}
 
             **Details:**
 
             | Requirement | Status | Score |
             |-------------|--------|-------|
-            ${results.map(r => `| ${r.requirement_key || r.requirement_uid} | ${r.status} | ${r.score.toFixed(2)} |`).join('\n')}
+            ${detailRows}
 
-            See artifacts for complete SARIF reports and evidence store.
+            See artifacts for complete SARIF reports, summary JSON, and evidence.
             `;
 
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
+            await github.rest.issues.createComment({
+              issue_number: pullNumber,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: comment

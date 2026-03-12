@@ -227,9 +227,10 @@ def evaluate_with_opa(
 
         # Check for OPA errors
         if result.returncode != 0:
+            error_output = result.stderr.strip() or result.stdout.strip()
             return Failure(
                 RuntimeError(
-                    f"OPA evaluation failed with exit code {result.returncode}: {result.stderr}"
+                    f"OPA evaluation failed with exit code {result.returncode}: {error_output}"
                 )
             )
 
