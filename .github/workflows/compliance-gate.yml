@@ -86,6 +86,7 @@ jobs:
           category: compliance-gate
 
       - name: Upload evidence store artifacts
+        id: upload_evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -99,6 +100,9 @@ jobs:
       - name: Comment on PR with compliance results
         if: github.event_name == 'pull_request' && always()
         uses: actions/github-script@v7
+        env:
+          WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EVIDENCE_ARTIFACT_URL: ${{ steps.upload_evidence.outputs.artifact-url }}
         with:
           script: |
             const fs = require('fs');
@@ -133,6 +137,8 @@ jobs:
             const conditional = results.filter(r => r.status === 'conditional_pass').length;
             const total = results.length;
             const statusIcon = summary.gate_status === 'passed' ? '✅' : '❌';
+            const workflowRunUrl = process.env.WORKFLOW_RUN_URL;
+            const evidenceArtifactUrl = process.env.EVIDENCE_ARTIFACT_URL;
 
             const formatIssues = (title, issues) => {
               if (!issues || issues.length === 0) {
@@ -150,6 +156,13 @@ jobs:
                   r => `| ${r.requirement_key || r.requirement_uid} | ${r.status} | ${r.score.toFixed(2)} |`
                 ).join('\n')
               : '| none | n/a | n/a |';
+
+            const links = [
+              `- [Workflow run](${workflowRunUrl})`,
+              evidenceArtifactUrl
+                ? `- [Compliance evidence artifact](${evidenceArtifactUrl})`
+                : '- Compliance evidence artifact: not available for this run',
+            ].join('\n');
 
             const comment = `## ${statusIcon} Compliance Gate Results
 
@@ -179,7 +192,10 @@ jobs:
             |-------------|--------|-------|
             ${detailRows}
 
-            See artifacts for complete SARIF reports, summary JSON, and evidence.
+            **Artifacts and run links:**
+            ${links}
+
+            The compliance evidence artifact contains the complete SARIF reports, summary JSON, and evidence bundle for this run.
             `;
 
             await github.rest.issues.createComment({

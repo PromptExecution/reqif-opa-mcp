@@ -1,0 +1,60 @@
+{
+  "schema": "requirement_candidate/1",
+  "candidate_id": "candidate-1b11488c1e6a",
+  "artifact_id": "artifact-2ac6e867c3a5",
+  "artifact_sha256": "f33a0f7e17af075cb26edddf270ff2d9196682aef52a4a411f773d338ab18c22",
+  "profile": "aescsf_core_v2",
+  "key": "ACCESS-1a",
+  "text": "Identities are provisioned, at least in an ad hoc manner, for personnel and other entities that require access to assets.",
+  "section": "ACCESS-1",
+  "subtype_hints": [
+    "ACCESS",
+    "SP-1"
+  ],
+  "extraction_rule_id": "xlsx.aescsf_core.practice_row.v1",
+  "rationale": "Mapped Practice ID and Practice columns from the AESCSF core workbook.",
+  "confidence_source": "deterministic",
+  "source_node_ids": [
+    "row-c12fd4108ab8",
+    "paragraph-0d4d91d19e8c"
+  ],
+  "anchors": [
+    {
+      "kind": "xlsx_row",
+      "artifact_id": "artifact-2ac6e867c3a5",
+      "sheet": "AESCSF Core",
+      "row": 2,
+      "heading_path": [
+        "ACCESS-1"
+      ],
+      "semantic_id": "ACCESS-1a"
+    },
+    {
+      "kind": "xlsx_cell_paragraph",
+      "artifact_id": "artifact-2ac6e867c3a5",
+      "sheet": "AESCSF Core",
+      "row": 2,
+      "column": "F",
+      "cell": "F2",
+      "paragraph": 1,
+      "heading_path": [
+        "ACCESS-1"
+      ],
+      "semantic_id": "ACCESS-1a"
+    }
+  ],
+  "metadata": {
+    "domain": "ACCESS",
+    "objective_id": "ACCESS-1",
+    "objective": "Establish Identities and Manage Authentication",
+    "practice_id": "ACCESS-1a",
+    "practice": "Identities are provisioned, at least in an ad hoc manner, for personnel and other entities that require access to assets.",
+    "mil": "MIL-1",
+    "security_profile": "SP-1",
+    "worksheet": "AESCSF Core",
+    "context_guidance": [
+      "Provisioning must be tracked.",
+      "Records should be reviewed quarterly."
+    ]
+  }
+}
