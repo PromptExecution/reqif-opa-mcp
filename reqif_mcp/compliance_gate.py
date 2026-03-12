@@ -55,6 +55,7 @@ class GateSummary:
     attempted_evaluations: int
     successful_evaluations: int
     verification_events_written: int
+    applied_filters: list[str] = field(default_factory=list)
     result_counts: dict[str, int] = field(default_factory=dict)
     meta_policy_failure_count: int = 0
     processing_failure_count: int = 0
@@ -74,6 +75,10 @@ def main() -> None:
         bundle_path=Path(args.bundle_path),
         subtype=args.subtype,
         package=args.package,
+        requirement_keys=args.requirement_key,
+        attribute_filters=args.attribute_filter,
+        text_filters=args.text_contains,
+        limit=args.limit,
         baseline_id=args.baseline_id,
         baseline_version=args.baseline_version,
         out_dir=Path(args.out_dir),
@@ -91,6 +96,30 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--bundle-path", required=True, help="OPA bundle directory")
     parser.add_argument("--subtype", required=True, help="Subtype to evaluate")
     parser.add_argument("--package", help="OPA package override")
+    parser.add_argument(
+        "--requirement-key",
+        action="append",
+        default=[],
+        help="Repeatable exact requirement key filter applied after subtype selection.",
+    )
+    parser.add_argument(
+        "--attribute-filter",
+        action="append",
+        default=[],
+        help="Repeatable filter in the form name=value or attrs.name=value.",
+    )
+    parser.add_argument(
+        "--text-contains",
+        action="append",
+        default=[],
+        help="Repeatable case-insensitive substring filter applied to requirement text.",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Optional maximum number of requirements to evaluate after filtering.",
+    )
     parser.add_argument("--baseline-id", default="CI-BASELINE-2024")
     parser.add_argument("--baseline-version", default="1.0.0")
     parser.add_argument("--out-dir", default=".")
@@ -103,6 +132,10 @@ def run_compliance_gate(
     bundle_path: Path,
     subtype: str,
     package: str | None,
+    requirement_keys: list[str] | None,
+    attribute_filters: list[str] | None,
+    text_filters: list[str] | None,
+    limit: int | None,
     baseline_id: str,
     baseline_version: str,
     out_dir: Path,
@@ -117,6 +150,10 @@ def run_compliance_gate(
             bundle_path=bundle_path,
             subtype=subtype,
             package=package,
+            requirement_keys=requirement_keys,
+            attribute_filters=attribute_filters,
+            text_filters=text_filters,
+            limit=limit,
             baseline_id=baseline_id,
             baseline_version=baseline_version,
             out_dir=out_dir,
@@ -135,6 +172,12 @@ def run_compliance_gate(
             attempted_evaluations=0,
             successful_evaluations=0,
             verification_events_written=0,
+            applied_filters=_describe_filters(
+                requirement_keys=requirement_keys or [],
+                attribute_filters=attribute_filters or [],
+                text_filters=text_filters or [],
+                limit=limit,
+            ),
             processing_failure_count=1,
             processing_failures=[issue],
         )
@@ -149,6 +192,10 @@ def _run_compliance_gate(
     bundle_path: Path,
     subtype: str,
     package: str | None,
+    requirement_keys: list[str] | None,
+    attribute_filters: list[str] | None,
+    text_filters: list[str] | None,
+    limit: int | None,
     baseline_id: str,
     baseline_version: str,
     out_dir: Path,
@@ -172,7 +219,14 @@ def _run_compliance_gate(
 
     _write_json(out_dir / "baseline_requirements.json", requirements)
 
-    selected_requirements = _select_requirements(requirements, subtype)
+    subtype_requirements = _select_requirements(requirements, subtype)
+    selected_requirements = _apply_requirement_filters(
+        requirements=subtype_requirements,
+        requirement_keys=requirement_keys or [],
+        attribute_filters=attribute_filters or [],
+        text_filters=text_filters or [],
+        limit=limit,
+    )
     _write_json(out_dir / "requirements.json", selected_requirements)
 
     meta_policy_failures.extend(
@@ -182,8 +236,10 @@ def _run_compliance_gate(
             package=package,
             bundle_manifest=bundle_manifest,
             requirements=requirements,
+            subtype_requirements=subtype_requirements,
             selected_requirements=selected_requirements,
             facts=facts,
+            filters_applied=bool((requirement_keys or []) or (attribute_filters or []) or (text_filters or []) or limit),
         )
     )
 
@@ -236,6 +292,12 @@ def _run_compliance_gate(
         attempted_evaluations=attempted_evaluations,
         successful_evaluations=len(results),
         verification_events_written=verification_events_written,
+        applied_filters=_describe_filters(
+            requirement_keys=requirement_keys or [],
+            attribute_filters=attribute_filters or [],
+            text_filters=text_filters or [],
+            limit=limit,
+        ),
         result_counts=dict(Counter(result.status for result in results)),
         meta_policy_failure_count=len(meta_policy_failures),
         processing_failure_count=len(processing_failures),
@@ -361,14 +423,102 @@ def _select_requirements(
     ]
 
 
+def _apply_requirement_filters(
+    requirements: list[dict[str, Any]],
+    requirement_keys: list[str],
+    attribute_filters: list[str],
+    text_filters: list[str],
+    limit: int | None,
+) -> list[dict[str, Any]]:
+    """Apply deterministic post-selection filters to requirements."""
+    normalized_keys = {value.strip() for value in requirement_keys if value.strip()}
+    parsed_attribute_filters = [_parse_attribute_filter(value) for value in attribute_filters if value.strip()]
+    normalized_text_filters = [value.strip().lower() for value in text_filters if value.strip()]
+
+    filtered: list[dict[str, Any]] = []
+    for requirement in requirements:
+        if normalized_keys and str(requirement.get("key", "")) not in normalized_keys:
+            continue
+        if parsed_attribute_filters and not all(
+            _requirement_attribute_matches(requirement, path, expected)
+            for path, expected in parsed_attribute_filters
+        ):
+            continue
+        if normalized_text_filters:
+            requirement_text = str(requirement.get("text", "")).lower()
+            if not all(fragment in requirement_text for fragment in normalized_text_filters):
+                continue
+        filtered.append(requirement)
+
+    if limit is not None:
+        return filtered[:limit]
+    return filtered
+
+
+def _parse_attribute_filter(raw_filter: str) -> tuple[str, str]:
+    """Parse an attribute filter expression."""
+    if "=" not in raw_filter:
+        raise ValueError(f"Invalid attribute filter {raw_filter!r}; expected name=value")
+    name, value = raw_filter.split("=", 1)
+    parsed_name = name.strip()
+    parsed_value = value.strip()
+    if not parsed_name or not parsed_value:
+        raise ValueError(f"Invalid attribute filter {raw_filter!r}; expected name=value")
+    return parsed_name, parsed_value
+
+
+def _requirement_attribute_matches(
+    requirement: dict[str, Any],
+    path: str,
+    expected: str,
+) -> bool:
+    """Match a dotted requirement or attrs path against an expected string value."""
+    parts = path.split(".")
+    current: Any = requirement
+    for index, part in enumerate(parts):
+        if isinstance(current, dict) and part in current:
+            current = current[part]
+            continue
+        if index == 0 and "attrs" in requirement and isinstance(requirement.get("attrs"), dict):
+            current = requirement["attrs"]
+            if part in current:
+                current = current[part]
+                continue
+        return False
+    return str(current) == expected
+
+
+def _describe_filters(
+    requirement_keys: list[str],
+    attribute_filters: list[str],
+    text_filters: list[str],
+    limit: int | None,
+) -> list[str]:
+    """Render applied filters for summaries and diagnostics."""
+    description: list[str] = []
+    if requirement_keys:
+        description.append(f"requirement_key in {sorted({value for value in requirement_keys if value})}")
+    for attr_filter in attribute_filters:
+        if attr_filter:
+            description.append(f"attribute {attr_filter}")
+    for text_filter in text_filters:
+        if text_filter:
+            description.append(f"text contains {text_filter!r}")
+    if limit is not None:
+        description.append(f"limit={limit}")
+    return description
+
+
 def _validate_meta_policies(
     reqif_path: Path,
     subtype: str,
     package: str | None,
     bundle_manifest: dict[str, Any],
     requirements: list[dict[str, Any]],
+    subtype_requirements: list[dict[str, Any]],
     selected_requirements: list[dict[str, Any]],
     facts: dict[str, Any],
+    filters_applied: bool,
 ) -> list[GateIssue]:
     """Validate meta-policy controls before evaluation."""
     issues: list[GateIssue] = []
@@ -385,7 +535,7 @@ def _validate_meta_policies(
             )
         )
 
-    if not selected_requirements:
+    if not subtype_requirements:
         issues.append(
             GateIssue(
                 code="EMPTY_SELECTION",
@@ -393,6 +543,17 @@ def _validate_meta_policies(
                 message=(
                     f"No active requirements matched subtype {subtype}. "
                     "A compliance evaluation must select at least one requirement."
+                ),
+            )
+        )
+    elif not selected_requirements and filters_applied:
+        issues.append(
+            GateIssue(
+                code="EMPTY_FILTERED_SELECTION",
+                stage="meta_policy",
+                message=(
+                    f"Subtype {subtype} matched active requirements, but the additional filters reduced the "
+                    "evaluation set to zero."
                 ),
             )
         )
@@ -732,6 +893,9 @@ def _render_summary_markdown(summary: GateSummary) -> str:
         f"- Gate failures: {summary.gate_failure_count}",
     ]
 
+    if summary.applied_filters:
+        lines.append(f"- Applied filters: {summary.applied_filters}")
+
     if summary.result_counts:
         lines.append(f"- Result counts: {summary.result_counts}")
 
@@ -767,6 +931,7 @@ def _print_summary(summary: GateSummary) -> None:
     print(f"  attempted_evaluations: {summary.attempted_evaluations}")
     print(f"  successful_evaluations: {summary.successful_evaluations}")
     print(f"  verification_events_written: {summary.verification_events_written}")
+    print(f"  applied_filters: {summary.applied_filters}")
     print(f"  result_counts: {summary.result_counts}")
     print(f"  meta_policy_failure_count: {summary.meta_policy_failure_count}")
     print(f"  processing_failure_count: {summary.processing_failure_count}")

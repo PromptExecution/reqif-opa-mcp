@@ -1,0 +1,66 @@
+{
+  "standard": "OWASP ASVS 5.0.0",
+  "sources": [
+    {
+      "url": "https://github.com/OWASP/ASVS/releases/download/latest/OWASP_Application_Security_Verification_Standard_5.0.0_en.json",
+      "filename": "OWASP_ASVS_5.0.0_en.json",
+      "sha256": "bcdbec214d70abcfad9284a31d4f9e5134305831d628aad3aa85d7e26626cb35"
+    },
+    {
+      "url": "https://github.com/OWASP/ASVS/releases/download/latest/OWASP_Application_Security_Verification_Standard_5.0.0_en.pdf",
+      "filename": "OWASP_ASVS_5.0.0_en.pdf",
+      "sha256": "0893ad2f0d6d3e5d1c298c53fc9b359cfd753b8a1ef4d99a4cfcaa19ba8e0ffc"
+    }
+  ],
+  "selected_controls": [
+    {
+      "control_id": "V1.2.5",
+      "text": "Verify that the application protects against OS command injection and that operating system calls use parameterized OS queries or use contextual command line output encoding.",
+      "level": "1",
+      "cwe": "CWE-78",
+      "severity": "high"
+    },
+    {
+      "control_id": "V1.3.6",
+      "text": "Verify that the application protects against Server-side Request Forgery (SSRF) attacks, by validating untrusted data against an allowlist of protocols, domains, paths and ports and sanitizing potentially dangerous characters before using the data to call another service.",
+      "level": "2",
+      "cwe": "CWE-918",
+      "severity": "medium"
+    },
+    {
+      "control_id": "V16.2.5",
+      "text": "Verify that when logging sensitive data, the application enforces logging based on the data's protection level. For example, it may not be allowed to log certain data, such as credentials or payment details. Other data, such as session tokens, may only be logged by being hashed or masked, either in full or partially.",
+      "level": "2",
+      "cwe": "CWE-532",
+      "severity": "medium"
+    },
+    {
+      "control_id": "V2.2.1",
+      "text": "Verify that input is validated to enforce business or functional expectations for that input. This should either use positive validation against an allow list of values, patterns, and ranges, or be based on comparing the input to an expected structure and logical limits according to predefined rules. For L1, this can focus on input which is used to make specific business or security decisions. For L2 and up, this should apply to all input.",
+      "level": "1",
+      "cwe": "CWE-20",
+      "severity": "high"
+    },
+    {
+      "control_id": "V5.2.1",
+      "text": "Verify that the application will only accept files of a size which it can process without causing a loss of performance or a denial of service attack.",
+      "level": "1",
+      "cwe": "CWE-400",
+      "severity": "high"
+    },
+    {
+      "control_id": "V5.3.2",
+      "text": "Verify that when the application creates file paths for file operations, instead of user-submitted filenames, it uses internally generated or trusted data, or if user-submitted filenames or file metadata must be used, strict validation and sanitization must be applied. This is to protect against path traversal, local or remote file inclusion (LFI, RFI), and server-side request forgery (SSRF) attacks.",
+      "level": "1",
+      "cwe": "CWE-22",
+      "severity": "high"
+    },
+    {
+      "control_id": "V8.3.1",
+      "text": "Verify that the application enforces authorization rules at a trusted service layer and doesn't rely on controls that an untrusted consumer could manipulate, such as client-side JavaScript.",
+      "level": "1",
+      "cwe": "CWE-862",
+      "severity": "high"
+    }
+  ]
+}

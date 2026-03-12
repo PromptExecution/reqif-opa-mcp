@@ -39,6 +39,10 @@ def test_compliance_gate_fails_on_empty_baseline(tmp_path: Path) -> None:
         bundle_path=OPA_BUNDLE,
         subtype="CYBER",
         package="cyber.access_control.v3",
+        requirement_keys=None,
+        attribute_filters=None,
+        text_filters=None,
+        limit=None,
         baseline_id="TEST-EMPTY",
         baseline_version="1.0.0",
         out_dir=tmp_path,
@@ -60,6 +64,10 @@ def test_compliance_gate_fails_on_empty_selection(tmp_path: Path) -> None:
         bundle_path=OPA_BUNDLE,
         subtype="NOT_A_REAL_SUBTYPE",
         package="cyber.access_control.v3",
+        requirement_keys=None,
+        attribute_filters=None,
+        text_filters=None,
+        limit=None,
         baseline_id="TEST-SELECTION",
         baseline_version="1.0.0",
         out_dir=tmp_path,
@@ -89,6 +97,10 @@ def test_compliance_gate_surfaces_processing_failures(
         bundle_path=OPA_BUNDLE,
         subtype="CYBER",
         package="cyber.access_control.v3",
+        requirement_keys=None,
+        attribute_filters=None,
+        text_filters=None,
+        limit=None,
         baseline_id="TEST-PROCESSING",
         baseline_version="1.0.0",
         out_dir=tmp_path,
@@ -139,6 +151,10 @@ def test_compliance_gate_reports_gate_failures(
         bundle_path=OPA_BUNDLE,
         subtype="CYBER",
         package="cyber.access_control.v3",
+        requirement_keys=None,
+        attribute_filters=None,
+        text_filters=None,
+        limit=None,
         baseline_id="TEST-GATE",
         baseline_version="1.0.0",
         out_dir=tmp_path,
@@ -175,6 +191,10 @@ def test_compliance_gate_fails_on_incomplete_facts(tmp_path: Path) -> None:
         bundle_path=OPA_BUNDLE,
         subtype="CYBER",
         package="cyber.access_control.v3",
+        requirement_keys=None,
+        attribute_filters=None,
+        text_filters=None,
+        limit=None,
         baseline_id="TEST-INCOMPLETE-FACTS",
         baseline_version="1.0.0",
         out_dir=tmp_path,
@@ -200,6 +220,10 @@ def test_compliance_gate_fails_on_bundle_package_mismatch(tmp_path: Path) -> Non
         bundle_path=OPA_BUNDLE,
         subtype="CYBER",
         package="finance.access_control.v1",
+        requirement_keys=None,
+        attribute_filters=None,
+        text_filters=None,
+        limit=None,
         baseline_id="TEST-PACKAGE-MISMATCH",
         baseline_version="1.0.0",
         out_dir=tmp_path,
@@ -208,6 +232,83 @@ def test_compliance_gate_fails_on_bundle_package_mismatch(tmp_path: Path) -> Non
     assert exit_code == 2
     summary = json.loads((tmp_path / "compliance_summary.json").read_text(encoding="utf-8"))
     assert "PACKAGE_ROOT_MISMATCH" in _issue_codes(summary["meta_policy_failures"])
+
+
+def test_compliance_gate_filters_selected_requirements(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    """Requirement filters should deterministically narrow the evaluated set."""
+    facts_path = _write_facts(tmp_path, subtype="CYBER")
+
+    monkeypatch.setattr(
+        "reqif_mcp.compliance_gate.evaluate_requirement",
+        lambda *args, **kwargs: Success(
+            {
+                "status": "pass",
+                "score": 1.0,
+                "confidence": 0.8,
+                "criteria": [],
+                "reasons": ["ok"],
+                "policy": {
+                    "bundle": "org/cyber",
+                    "revision": "v3.0.0",
+                    "hash": "hash",
+                },
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        "reqif_mcp.compliance_gate.reqif_write_verification",
+        lambda event: {"success": True, "event_id": "evt-1"},
+    )
+
+    exit_code = run_compliance_gate(
+        reqif_path=SAMPLE_REQIF,
+        facts_path=facts_path,
+        bundle_path=OPA_BUNDLE,
+        subtype="CYBER",
+        package="cyber.access_control.v3",
+        requirement_keys=["CYBER-ENC-001"],
+        attribute_filters=["owner=security-team"],
+        text_filters=["cryptographic"],
+        limit=1,
+        baseline_id="TEST-FILTERED",
+        baseline_version="1.0.0",
+        out_dir=tmp_path,
+    )
+
+    assert exit_code == 0
+    summary = json.loads((tmp_path / "compliance_summary.json").read_text(encoding="utf-8"))
+    results = json.loads((tmp_path / "compliance_results.json").read_text(encoding="utf-8"))
+    assert summary["selected_requirement_count"] == 1
+    assert summary["applied_filters"]
+    assert len(results) == 1
+    assert results[0]["requirement_key"] == "CYBER-ENC-001"
+
+
+def test_compliance_gate_fails_on_empty_filtered_selection(tmp_path: Path) -> None:
+    """Filters that eliminate every matched requirement must fail explicitly."""
+    facts_path = _write_facts(tmp_path, subtype="CYBER")
+
+    exit_code = run_compliance_gate(
+        reqif_path=SAMPLE_REQIF,
+        facts_path=facts_path,
+        bundle_path=OPA_BUNDLE,
+        subtype="CYBER",
+        package="cyber.access_control.v3",
+        requirement_keys=None,
+        attribute_filters=["owner=does-not-exist"],
+        text_filters=None,
+        limit=None,
+        baseline_id="TEST-EMPTY-FILTERED",
+        baseline_version="1.0.0",
+        out_dir=tmp_path,
+    )
+
+    assert exit_code == 2
+    summary = json.loads((tmp_path / "compliance_summary.json").read_text(encoding="utf-8"))
+    assert "EMPTY_FILTERED_SELECTION" in _issue_codes(summary["meta_policy_failures"])
 
 
 def _write_facts(tmp_path: Path, subtype: str) -> Path:

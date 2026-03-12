@@ -111,14 +111,13 @@ def _normalize_spec_object(
         # Build rubrics (default OPA rubric)
         rubrics = _build_default_rubrics(subtypes)
 
-        # Build attrs object (additional attributes)
-        attrs: dict[str, Any] = {}
-        if "severity" in attrs_map:
-            attrs["severity"] = attrs_map["severity"]
-        if "owner" in attrs_map:
-            attrs["owner"] = attrs_map["owner"]
-        if "verify_method" in attrs_map:
-            attrs["verify_method"] = attrs_map["verify_method"]
+        # Preserve non-core ReqIF attributes for downstream traceability and filtering.
+        attrs = {
+            key: value
+            for key, value in attrs_map.items()
+            if key not in {"key", "text", "description", "subtypes", "type", "status"}
+            and value not in ("", None)
+        }
 
         # Build requirement record
         requirement_record: dict[str, Any] = {

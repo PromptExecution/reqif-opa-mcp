@@ -1,0 +1,37 @@
+{
+  "standard": "NIST SP 800-218 SSDF 1.1",
+  "sources": [
+    {
+      "url": "https://doi.org/10.6028/NIST.SP.800-218",
+      "filename": "NIST.SP.800-218.pdf",
+      "sha256": "617746e553a9e2da49bfbd4eef0dfc3094758a39b869314e4173ac36605cde22"
+    },
+    {
+      "url": "https://doi.org/10.6028/NIST.SP.800-218",
+      "filename": "NIST.SP.800-218.txt",
+      "sha256": "093e297393e964382a1797f772b30e808f9f80f9bdc17210896afa9460f4bcd7"
+    }
+  ],
+  "selected_controls": [
+    {
+      "control_id": "PO.3.1",
+      "text": "Specify which tools or tool types must or should be included in each toolchain to mitigate identified risks, as well as how the toolchain components are to be integrated with each other.",
+      "severity": "medium"
+    },
+    {
+      "control_id": "PW.7.2",
+      "text": "Perform the code review and/or code analysis based on the organization's secure coding standards, and record and triage all discovered issues and recommended remediations in the development team's workflow or issue tracking system.",
+      "severity": "high"
+    },
+    {
+      "control_id": "RV.1.2",
+      "text": "Review, analyze, and/or test the software's code to identify or confirm the presence of previously undetected vulnerabilities.",
+      "severity": "high"
+    },
+    {
+      "control_id": "RV.1.3",
+      "text": "Have a policy that addresses vulnerability disclosure and remediation, and implement the roles, responsibilities, and processes needed to support that policy.",
+      "severity": "high"
+    }
+  ]
+}

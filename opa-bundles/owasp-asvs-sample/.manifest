@@ -1,0 +1,19 @@
+{
+  "revision": "2026.03.12",
+  "roots": [
+    "asvs"
+  ],
+  "metadata": {
+    "bundle": "org/owasp-asvs-sample",
+    "description": "Functional OWASP ASVS sample gates for repo dogfooding.",
+    "authors": [
+      "PromptExecution"
+    ],
+    "created_at": "2026-03-12T00:00:00Z",
+    "organization": "org",
+    "subtypes": [
+      "APPSEC"
+    ]
+  },
+  "wasm": []
+}

@@ -30,6 +30,69 @@ typecheck:
 
 check: lint typecheck test
 
+check-ingest:
+    just -f reqif_ingest_cli/justfile check
+
+check-all: check check-ingest
+
+dogfood-ingest:
+    just -f reqif_ingest_cli/justfile smoke-aemo-core
+    just -f reqif_ingest_cli/justfile smoke-aemo-toolkit
+
+repo-security-facts out="tmp/repo-security-facts.json":
+    mkdir -p "$(dirname {{out}})"
+    env UV_CACHE_DIR=.uv-cache uv run python agents/repo_security_agent.py --root . > {{out}}
+
+dogfood-asvs out="tmp/dogfood-asvs":
+    mkdir -p {{out}}
+    just repo-security-facts {{out}}/facts.json
+    env UV_CACHE_DIR=.uv-cache uv run python -m reqif_mcp.compliance_gate \
+        --reqif-path samples/standards/derived/owasp_asvs_cwe.reqif \
+        --facts-path {{out}}/facts.json \
+        --bundle-path opa-bundles/owasp-asvs-sample \
+        --subtype APPSEC \
+        --package asvs.python_secure_coding.v1 \
+        --baseline-id OWASP-ASVS-SAMPLE \
+        --baseline-version 5.0.0 \
+        --out-dir {{out}}
+
+dogfood-asvs-cwe cwe out="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    OUTPUT="{{out}}"
+    if [ -z "$OUTPUT" ]; then
+        OUTPUT="tmp/dogfood-asvs-{{cwe}}"
+    fi
+    mkdir -p "$OUTPUT"
+    just repo-security-facts "$OUTPUT/facts.json"
+    env UV_CACHE_DIR=.uv-cache uv run python -m reqif_mcp.compliance_gate \
+        --reqif-path samples/standards/derived/owasp_asvs_cwe.reqif \
+        --facts-path "$OUTPUT/facts.json" \
+        --bundle-path opa-bundles/owasp-asvs-sample \
+        --subtype APPSEC \
+        --package asvs.python_secure_coding.v1 \
+        --attribute-filter cwe={{cwe}} \
+        --baseline-id OWASP-ASVS-SAMPLE \
+        --baseline-version 5.0.0 \
+        --out-dir "$OUTPUT"
+
+dogfood-ssdf out="tmp/dogfood-ssdf":
+    mkdir -p {{out}}
+    just repo-security-facts {{out}}/facts.json
+    env UV_CACHE_DIR=.uv-cache uv run python -m reqif_mcp.compliance_gate \
+        --reqif-path samples/standards/derived/nist_ssdf_dogfood.reqif \
+        --facts-path {{out}}/facts.json \
+        --bundle-path opa-bundles/nist-ssdf-sample \
+        --subtype SECURE_SDLC \
+        --package ssdf.secure_software.v1 \
+        --baseline-id NIST-SSDF-SAMPLE \
+        --baseline-version 1.1 \
+        --out-dir {{out}}
+
+dogfood-security:
+    just dogfood-asvs
+    just dogfood-ssdf
+
 # Docker
 docker-build tag="latest":
     docker build -t ghcr.io/promptexecution/reqif-opa-mcp:{{tag}} .

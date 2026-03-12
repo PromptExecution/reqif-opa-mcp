@@ -1,0 +1,19 @@
+{
+  "revision": "2026.03.12",
+  "roots": [
+    "ssdf"
+  ],
+  "metadata": {
+    "bundle": "org/nist-ssdf-sample",
+    "description": "Functional NIST SSDF sample gates for repo dogfooding.",
+    "authors": [
+      "PromptExecution"
+    ],
+    "created_at": "2026-03-12T00:00:00Z",
+    "organization": "org",
+    "subtypes": [
+      "SECURE_SDLC"
+    ]
+  },
+  "wasm": []
+}
