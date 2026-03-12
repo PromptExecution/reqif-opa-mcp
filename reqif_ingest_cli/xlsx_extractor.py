@@ -476,28 +476,68 @@ def _build_row_paragraph_nodes(
     artifact_id: str,
     worksheet: str,
     row_index: int,
-    row_values: dict[str, str],
+    row_values: dict[str, Any],
     row_id: str,
 ) -> list[DocumentNode]:
-    """Create paragraph nodes for every populated cell in a row."""
+    """Create paragraph nodes for every populated cell in a row.
+
+    The ``row_values`` mapping is keyed by semantic header names. Values may be either:
+
+    * a single string (legacy behavior), or
+    * a list of ``(column_index, text)`` tuples, allowing multiple columns to map
+      to the same semantic header while preserving the original column indices.
+    """
     nodes: list[DocumentNode] = []
-    for position, (semantic_header, text) in enumerate(row_values.items(), start=1):
-        if not text:
+
+    # These identifiers are per-row and shared across all paragraph nodes.
+    semantic_id = row_values.get("practice_id") or row_values.get("requirement_id")
+    objective_id = row_values.get("objective_id")
+    heading_path = [objective_id] if objective_id else []
+
+    # Fallback position counter used only when no explicit column index is provided.
+    position = 1
+
+    for semantic_header, value in row_values.items():
+        # Skip non-content keys that are used solely for identification or headings.
+        if semantic_header in {"practice_id", "requirement_id", "objective_id"}:
             continue
-        role = "context_guidance" if semantic_header == "context_guidance" else semantic_header
-        nodes.extend(
-            _build_paragraph_nodes_for_cell(
-                artifact_id=artifact_id,
-                worksheet=worksheet,
-                row_index=row_index,
-                column_index=position,
-                role=role,
-                semantic_id=row_values.get("practice_id") or row_values.get("requirement_id"),
-                text=text,
-                parent_id=row_id,
-                heading_path=[row_values.get("objective_id", "")] if row_values.get("objective_id") else [],
+
+        # Normalize the value to a list of (column_index, text) pairs.
+        # This supports both legacy string values and the richer representation
+        # where multiple columns map to the same semantic header.
+        if isinstance(value, list):
+            cells = value
+        else:
+            cells = [(None, value)]
+
+        for explicit_column_index, text in cells:
+            if not text:
+                continue
+
+            role = "context_guidance" if semantic_header == "context_guidance" else semantic_header
+
+            # Prefer an explicit column index if provided; otherwise, fall back
+            # to a monotonically increasing position counter to preserve the
+            # previous behavior when no column information is available.
+            column_index = explicit_column_index if explicit_column_index is not None else position
+
+            nodes.extend(
+                _build_paragraph_nodes_for_cell(
+                    artifact_id=artifact_id,
+                    worksheet=worksheet,
+                    row_index=row_index,
+                    column_index=column_index,
+                    role=role,
+                    semantic_id=semantic_id,
+                    text=text,
+                    parent_id=row_id,
+                    heading_path=heading_path,
+                )
             )
-        )
+
+            # Only advance the fallback position counter when it was actually used.
+            if explicit_column_index is None:
+                position += 1
     return nodes
 
 
