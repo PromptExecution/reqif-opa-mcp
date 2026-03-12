@@ -1,19 +1,19 @@
 # Samples
 
-Tracked sample assets used by docs, tests, and local dogfooding.
+Tracked sample assets used by docs, tests, and local self-testing.
 
 ```mermaid
 flowchart LR
     A[aemo/] --> ING[reqif_ingest_cli]
     C[contracts/] --> DOCS[README + tests]
-    S[standards/] --> GATE[dogfood compliance gate]
+    S[standards/] --> GATE[repo self-test gate]
 ```
 
 ## Index
 
 - `aemo/README.md` - source workbooks used for deterministic ingest smoke runs
 - `contracts/README.md` - compact JSON fixtures for contracts and examples
-- `standards/README.md` - upstream standards material and derived dogfood baselines
+- `standards/README.md` - upstream standards material and derived self-test baselines
 
 ## Layout
 

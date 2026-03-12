@@ -1,6 +1,6 @@
 # Standards Samples
 
-These files let the repo dogfood its own compliance gate against concrete security standards samples.
+These files let the repo exercise its own compliance gate against concrete security standards samples.
 
 ```mermaid
 flowchart LR
@@ -19,12 +19,12 @@ flowchart LR
 - `derived/owasp_asvs_cwe.reqif`
   - selected ASVS controls mapped to the current repo-security CWE profile
 - `derived/nist_ssdf_dogfood.reqif`
-  - selected SSDF tasks used for repo process dogfooding
+  - selected SSDF tasks used for repo process self-testing
 
 ## Related Commands
 
-- `just dogfood-asvs`
-- `just dogfood-asvs-cwe CWE-20`
-- `just dogfood-ssdf`
+- `just selftest-asvs`
+- `just selftest-asvs-cwe CWE-20`
+- `just selftest-ssdf`
 
 These are functional samples. They are intentionally narrow and meant for repo-level gate exercise, not full standards coverage.
