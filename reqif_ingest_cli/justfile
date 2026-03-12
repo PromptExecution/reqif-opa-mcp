@@ -41,7 +41,7 @@ emit path output profile="auto" title="Derived ReqIF":
         --pretty
 
 smoke-aemo-core:
-    cd .. && uv run python -m reqif_ingest_cli distill "The AESCSF v2 Core.xlsx" --pretty
+    cd .. && uv run python -m reqif_ingest_cli distill "samples/aemo/The AESCSF v2 Core.xlsx" --pretty
 
 smoke-aemo-toolkit:
-    cd .. && uv run python -m reqif_ingest_cli distill "V2 AESCSF Toolkit Version V1-1.xlsx" --pretty
+    cd .. && uv run python -m reqif_ingest_cli distill "samples/aemo/V2 AESCSF Toolkit Version V1-1.xlsx" --pretty

@@ -1,0 +1,28 @@
+{
+  "uid": "01JY3R8F0A8M5E9B4W7K2Q1N3P",
+  "key": "ACCESS-1a",
+  "subtypes": [
+    "ACCESS",
+    "SP-1"
+  ],
+  "status": "active",
+  "policy_baseline": {
+    "id": "AESCSF-2025",
+    "version": "2025.1",
+    "hash": "sha256:f33a0f7e17af075cb26edddf270ff2d9196682aef52a4a411f773d338ab18c22"
+  },
+  "rubrics": [
+    {
+      "engine": "opa",
+      "bundle": "org/aescsf/access",
+      "package": "aescsf.access.v1",
+      "rule": "decision"
+    }
+  ],
+  "text": "Identities are provisioned, at least in an ad hoc manner, for personnel and other entities that require access to assets.",
+  "attrs": {
+    "severity": "high",
+    "owner": "cyber-governance",
+    "verify_method": "analysis"
+  }
+}

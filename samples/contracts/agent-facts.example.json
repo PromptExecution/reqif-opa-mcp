@@ -1,0 +1,31 @@
+{
+  "target": {
+    "repo": "PromptExecution/reqif-opa-mcp",
+    "commit": "4ac9b86",
+    "build": "pr-17"
+  },
+  "facts": {
+    "uses_identity_provider": true,
+    "has_joiner_mover_leaver_process": false,
+    "evidence_count": 2,
+    "diff_summary": {
+      "files_changed": 12
+    }
+  },
+  "evidence": [
+    {
+      "type": "artifact",
+      "uri": "artifact://samples/aemo/The AESCSF v2 Core.xlsx",
+      "hash": "sha256:f33a0f7e17af075cb26edddf270ff2d9196682aef52a4a411f773d338ab18c22"
+    },
+    {
+      "type": "json",
+      "uri": "artifact://samples/contracts/agent-facts.example.json"
+    }
+  ],
+  "agent": {
+    "name": "access-control-agent",
+    "version": "0.1.0",
+    "rubric_hint": "aescsf.access.v1"
+  }
+}

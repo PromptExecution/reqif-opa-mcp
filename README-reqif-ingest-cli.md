@@ -27,11 +27,11 @@ just -f reqif_ingest_cli/justfile test
 just -f reqif_ingest_cli/justfile lint
 just -f reqif_ingest_cli/justfile typecheck
 
-just -f reqif_ingest_cli/justfile artifact "The AESCSF v2 Core.xlsx"
-just -f reqif_ingest_cli/justfile extract "The AESCSF v2 Core.xlsx"
-just -f reqif_ingest_cli/justfile distill "The AESCSF v2 Core.xlsx"
+just -f reqif_ingest_cli/justfile artifact "samples/aemo/The AESCSF v2 Core.xlsx"
+just -f reqif_ingest_cli/justfile extract "samples/aemo/The AESCSF v2 Core.xlsx"
+just -f reqif_ingest_cli/justfile distill "samples/aemo/The AESCSF v2 Core.xlsx"
 just -f reqif_ingest_cli/justfile emit \
-  "The AESCSF v2 Core.xlsx" \
+  "samples/aemo/The AESCSF v2 Core.xlsx" \
   "evidence_store/toolkits/aemo/aescsf-core.reqif" \
   auto \
   "AESCSF Core Derived Baseline"
@@ -49,11 +49,11 @@ just -f reqif_ingest_cli/justfile smoke-aemo-toolkit
 The standalone module runs directly with `uv`:
 
 ```bash
-uv run python -m reqif_ingest_cli register-artifact "The AESCSF v2 Core.xlsx" --pretty
-uv run python -m reqif_ingest_cli extract "The AESCSF v2 Core.xlsx" --pretty
-uv run python -m reqif_ingest_cli distill "The AESCSF v2 Core.xlsx" --pretty
+uv run python -m reqif_ingest_cli register-artifact "samples/aemo/The AESCSF v2 Core.xlsx" --pretty
+uv run python -m reqif_ingest_cli extract "samples/aemo/The AESCSF v2 Core.xlsx" --pretty
+uv run python -m reqif_ingest_cli distill "samples/aemo/The AESCSF v2 Core.xlsx" --pretty
 uv run python -m reqif_ingest_cli emit-reqif \
-  "The AESCSF v2 Core.xlsx" \
+  "samples/aemo/The AESCSF v2 Core.xlsx" \
   --title "AESCSF Core Derived Baseline" \
   --output "evidence_store/toolkits/aemo/aescsf-core.reqif" \
   --pretty
@@ -66,6 +66,12 @@ uv run python -m reqif_ingest_cli foundry-config --pretty
 - `document_graph/1`: sections, rows, paragraphs, anchors, semantic IDs
 - `requirement_candidate/1`: deterministic candidate text, rationale, rule ID, provenance
 - ReqIF XML: minimal derived baseline that round-trips through the current parser
+
+See also:
+
+- `samples/contracts/requirement-candidate.example.json`
+- `samples/contracts/agent-facts.example.json`
+- `samples/contracts/opa-output.example.json`
 
 ## Current Profiles
 
@@ -102,3 +108,10 @@ uv run python -m reqif_ingest_cli foundry-config --pretty
 ```
 
 The adapter is for review and remapping only. It is not part of the deterministic first pass.
+
+## Current Gaps
+
+- no baseline diff command yet
+- no ingest MCP tool surface yet
+- AESCSF mappings are still code-first rather than externalized config
+- rich PDF structure extraction still depends on offline Docling model availability

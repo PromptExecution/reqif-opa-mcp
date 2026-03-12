@@ -1,0 +1,33 @@
+{
+  "status": "fail",
+  "score": 0.33,
+  "confidence": 0.82,
+  "criteria": [
+    {
+      "id": "ACCESS-1a",
+      "status": "fail",
+      "weight": 3,
+      "message": "Provisioning process evidence is missing.",
+      "evidence": [
+        0
+      ]
+    },
+    {
+      "id": "ACCESS-1a-guidance",
+      "status": "pass",
+      "weight": 1,
+      "message": "Source artifact provenance is present.",
+      "evidence": [
+        1
+      ]
+    }
+  ],
+  "reasons": [
+    "No joiner-mover-leaver evidence was provided for the target change."
+  ],
+  "policy": {
+    "bundle": "org/aescsf/access",
+    "revision": "2026-03-11",
+    "hash": "sha256:8db5c64d8bc6b77f2d6c1f4dcb2f4ac6ef0fd8e4d55408cfe2f6b2bb09e4ee91"
+  }
+}
