@@ -20,6 +20,7 @@ variables:
   containerAppEnvironmentName: 'reqif-opa-demo-env'
   containerAppName: 'reqif-opa-mcp-demo'
   containerPort: '8000'
+  imageTarget: 'runtime-lite'
 
 stages:
   - stage: ci
@@ -61,6 +62,7 @@ stages:
                 set -euo pipefail
                 az acr login --name $(acrName)
                 docker build \
+                  --target $(imageTarget) \
                   -t $(acrName).azurecr.io/$(imageRepository):$(Build.SourceVersion) \
                   -t $(acrName).azurecr.io/$(imageRepository):latest \
                   .
