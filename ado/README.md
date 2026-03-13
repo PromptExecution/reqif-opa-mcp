@@ -2,6 +2,8 @@
 
 This folder contains Azure Pipeline templates for CI, self-test, and demo deployment.
 
+For the full deployment guide, variable setup, artifact contract, and demo flow, see [README-azure.md](../README-azure.md).
+
 ## Files
 
 - `templates/ci.yml`

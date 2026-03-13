@@ -234,7 +234,8 @@ Current implementation notes:
 - `docling` remains the richer path for DOCX and Markdown
 - Azure Foundry integration is optional and not part of the deterministic first pass
 
-See `README-reqif-ingest-cli.md` for command details.
+See [README-reqif-ingest-cli.md](README-reqif-ingest-cli.md) for command details.
+See [README-azure.md](README-azure.md) for Azure DevOps CI, deployment, and demo guidance.
 
 ## Samples and Fixtures
 
@@ -288,6 +289,8 @@ Recommended CI/CD workflow shape for this repo:
 - baseline drift check
   - trigger on changes to tracked source documents
   - emit ReqIF and compare normalized requirements against the last known baseline
+
+Azure DevOps deployment and demo details live in [README-azure.md](README-azure.md).
 
 Recommended Copilot usage in this repo:
 
