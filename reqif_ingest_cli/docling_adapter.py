@@ -62,7 +62,7 @@ def extract_docling_document(
                 from docling.datamodel.base_models import InputFormat
                 from docling.datamodel.pipeline_options import PdfPipelineOptions
                 from docling.document_converter import DocumentConverter, PdfFormatOption
-            except Exception as exc:
+            except (ImportError, ModuleNotFoundError) as exc:
                 return Failure(_missing_docling_error(resolved, exc))
 
             try:
