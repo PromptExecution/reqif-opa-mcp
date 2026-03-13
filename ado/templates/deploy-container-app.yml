@@ -1,0 +1,75 @@
+parameters:
+  - name: azureServiceConnection
+    type: string
+  - name: resourceGroup
+    type: string
+  - name: location
+    type: string
+  - name: acrName
+    type: string
+  - name: containerAppEnvironmentName
+    type: string
+  - name: containerAppName
+    type: string
+  - name: imageRepository
+    type: string
+    default: reqif-opa-mcp
+  - name: imageTag
+    type: string
+  - name: containerPort
+    type: string
+    default: '8000'
+  - name: environmentName
+    type: string
+    default: demo
+
+jobs:
+  - deployment: deploy_demo
+    displayName: Deploy demo container app
+    environment: ${{ parameters.environmentName }}
+    pool:
+      vmImage: ubuntu-latest
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            - checkout: self
+
+            - task: AzureCLI@2
+              displayName: Deploy infra and container app
+              inputs:
+                azureSubscription: ${{ parameters.azureServiceConnection }}
+                scriptType: bash
+                scriptLocation: inlineScript
+                inlineScript: |
+                  set -euo pipefail
+                  az extension add --name containerapp --upgrade --only-show-errors
+
+                  IMAGE="${{ parameters.acrName }}.azurecr.io/${{ parameters.imageRepository }}:${{ parameters.imageTag }}"
+                  az deployment group create \
+                    --resource-group "${{ parameters.resourceGroup }}" \
+                    --template-file infra/main.bicep \
+                    --parameters \
+                      location="${{ parameters.location }}" \
+                      acrName="${{ parameters.acrName }}" \
+                      containerAppEnvironmentName="${{ parameters.containerAppEnvironmentName }}" \
+                      containerAppName="${{ parameters.containerAppName }}" \
+                      containerImage="$IMAGE" \
+                      containerPort=${{ parameters.containerPort }}
+
+                  FQDN=$(az containerapp show \
+                    --resource-group "${{ parameters.resourceGroup }}" \
+                    --name "${{ parameters.containerAppName }}" \
+                    --query properties.configuration.ingress.fqdn \
+                    -o tsv)
+
+                  mkdir -p artifacts/deploy
+                  printf 'https://%s\n' "$FQDN" > artifacts/deploy/container_app_url.txt
+                  echo "##vso[task.setvariable variable=ContainerAppUrl;isOutput=true]https://$FQDN"
+
+            - task: PublishPipelineArtifact@1
+              condition: always()
+              inputs:
+                targetPath: artifacts/deploy
+                artifact: deploy
+                publishLocation: pipeline

@@ -1,0 +1,58 @@
+parameters:
+  - name: pythonVersion
+    type: string
+    default: '3.10'
+  - name: artifactRoot
+    type: string
+    default: 'artifacts'
+  - name: enforceGateFailures
+    type: string
+    default: 'false'
+
+jobs:
+  - job: selftest
+    displayName: Self-test
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+      - checkout: self
+
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: ${{ parameters.pythonVersion }}
+
+      - task: Cache@2
+        inputs:
+          key: 'uv | "$(Agent.OS)" | uv.lock'
+          restoreKeys: |
+            uv | "$(Agent.OS)"
+          path: $(Build.SourcesDirectory)/.uv-cache
+
+      - bash: |
+          set -euo pipefail
+          ./scripts/install_ci_tools.sh
+          echo "##vso[task.prependpath]$HOME/.local/bin"
+        displayName: Install uv, just, and OPA
+
+      - bash: |
+          set -euo pipefail
+          export PATH="$HOME/.local/bin:$PATH"
+          export UV_CACHE_DIR=.uv-cache
+          uv sync
+          just demo-artifacts "${{ parameters.artifactRoot }}/demo" "${{ parameters.artifactRoot }}/selftest" "${{ parameters.enforceGateFailures }}"
+        continueOnError: ${{ eq(parameters.enforceGateFailures, 'false') }}
+        displayName: Build self-test and demo artifacts
+
+      - task: PublishPipelineArtifact@1
+        condition: always()
+        inputs:
+          targetPath: '${{ parameters.artifactRoot }}/selftest'
+          artifact: selftest
+          publishLocation: pipeline
+
+      - task: PublishPipelineArtifact@1
+        condition: always()
+        inputs:
+          targetPath: '${{ parameters.artifactRoot }}/demo'
+          artifact: demo
+          publishLocation: pipeline

@@ -1,8 +1,6 @@
 """Tests for requirement record validation module."""
 
 from pathlib import Path
-
-import pytest
 from returns.result import Failure, Success
 
 from reqif_mcp.validation import (

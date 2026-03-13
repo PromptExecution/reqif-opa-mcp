@@ -9,6 +9,7 @@ WORKDIR /build
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 COPY reqif_mcp/ reqif_mcp/
+COPY reqif_ingest_cli/ reqif_ingest_cli/
 COPY README.md LICENSE ./
 RUN uv sync --frozen --no-dev
 
@@ -34,8 +35,13 @@ WORKDIR /app
 COPY --from=builder --chown=reqif:reqif /build/.venv /app/.venv
 COPY --from=opa-downloader /opa/opa /usr/local/bin/opa
 COPY --chown=reqif:reqif reqif_mcp/ /app/reqif_mcp/
-COPY --chown=reqif:reqif pyproject.toml README.md LICENSE /app/
-RUN mkdir -p /app/evidence_store/{events,sarif,decision_logs} /app/opa-bundles && \
+COPY --chown=reqif:reqif reqif_ingest_cli/ /app/reqif_ingest_cli/
+COPY --chown=reqif:reqif agents/ /app/agents/
+COPY --chown=reqif:reqif schemas/ /app/schemas/
+COPY --chown=reqif:reqif samples/ /app/samples/
+COPY --chown=reqif:reqif opa-bundles/ /app/opa-bundles/
+COPY --chown=reqif:reqif justfile pyproject.toml README.md README-reqif-ingest-cli.md LICENSE /app/
+RUN mkdir -p /app/evidence_store/{events,sarif,decision_logs} /app/artifacts/{tests,selftest,demo} && \
     chown -R reqif:reqif /app
 
 ENV PATH="/app/.venv/bin:$PATH" \
@@ -44,6 +50,6 @@ ENV PATH="/app/.venv/bin:$PATH" \
 
 USER reqif
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import sys; from reqif_mcp.server import mcp; sys.exit(0)"
+    CMD python -c "import sys, urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).read(); sys.exit(0)"
 EXPOSE 8000
 CMD ["python", "-m", "reqif_mcp", "--http", "--host", "0.0.0.0", "--port", "8000"]

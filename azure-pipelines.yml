@@ -1,0 +1,132 @@
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+
+pr:
+  branches:
+    include:
+      - main
+
+variables:
+  pythonVersion: '3.10'
+  artifactRoot: 'artifacts'
+  azureServiceConnection: ''
+  azureResourceGroup: 'rg-reqif-opa-demo'
+  azureLocation: 'australiaeast'
+  acrName: 'reqifopademoacr'
+  imageRepository: 'reqif-opa-mcp'
+  containerAppEnvironmentName: 'reqif-opa-demo-env'
+  containerAppName: 'reqif-opa-mcp-demo'
+  containerPort: '8000'
+
+stages:
+  - stage: ci
+    displayName: CI
+    jobs:
+      - template: ado/templates/ci.yml
+        parameters:
+          pythonVersion: '3.10'
+          artifactRoot: 'artifacts'
+
+  - stage: selftest
+    displayName: Self-test
+    dependsOn: ci
+    jobs:
+      - template: ado/templates/selftest.yml
+        parameters:
+          pythonVersion: '3.10'
+          artifactRoot: 'artifacts'
+          enforceGateFailures: 'false'
+
+  - stage: image
+    displayName: Build image
+    dependsOn: selftest
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'), ne(variables['azureServiceConnection'], ''), ne(variables['acrName'], ''))
+    jobs:
+      - job: build_image
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+
+          - task: AzureCLI@2
+            displayName: Build and push image to ACR
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -euo pipefail
+                az acr login --name $(acrName)
+                docker build \
+                  -t $(acrName).azurecr.io/$(imageRepository):$(Build.SourceVersion) \
+                  -t $(acrName).azurecr.io/$(imageRepository):latest \
+                  .
+                docker push $(acrName).azurecr.io/$(imageRepository):$(Build.SourceVersion)
+                docker push $(acrName).azurecr.io/$(imageRepository):latest
+
+  - stage: deploy_demo
+    displayName: Deploy demo
+    dependsOn: image
+    condition: and(succeeded(), ne(variables['azureServiceConnection'], ''), ne(variables['azureResourceGroup'], ''), ne(variables['containerAppName'], ''))
+    jobs:
+      - template: ado/templates/deploy-container-app.yml
+        parameters:
+          azureServiceConnection: $(azureServiceConnection)
+          resourceGroup: $(azureResourceGroup)
+          location: $(azureLocation)
+          acrName: $(acrName)
+          containerAppEnvironmentName: $(containerAppEnvironmentName)
+          containerAppName: $(containerAppName)
+          imageRepository: $(imageRepository)
+          imageTag: $(Build.SourceVersion)
+          containerPort: $(containerPort)
+          environmentName: demo
+
+  - stage: smoke_demo
+    displayName: Smoke demo
+    dependsOn: deploy_demo
+    condition: and(succeeded(), ne(variables['azureServiceConnection'], ''), ne(variables['containerAppName'], ''))
+    jobs:
+      - job: smoke_demo
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: AzureCLI@2
+            displayName: Capture live health response
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -euo pipefail
+                az extension add --name containerapp --upgrade --only-show-errors
+                FQDN=$(az containerapp show \
+                  --resource-group $(azureResourceGroup) \
+                  --name $(containerAppName) \
+                  --query properties.configuration.ingress.fqdn \
+                  -o tsv)
+                mkdir -p artifacts/demo/live
+                curl -fsSL "https://$FQDN/health" > artifacts/demo/live/health.json
+                cat > artifacts/demo/live/summary.md <<SUMMARY
+                # Live Demo Smoke
+
+                - URL: \
+                  \
+                  https://$FQDN/health
+                - Request: \
+                  \
+                  GET /health
+                - Output: \
+                  \
+                  artifacts/demo/live/health.json
+                SUMMARY
+
+          - task: PublishPipelineArtifact@1
+            condition: always()
+            inputs:
+              targetPath: artifacts/demo/live
+              artifact: smoke-demo
+              publishLocation: pipeline

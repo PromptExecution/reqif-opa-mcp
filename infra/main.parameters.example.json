@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "australiaeast"
+    },
+    "acrName": {
+      "value": "reqifopademoacr"
+    },
+    "keyVaultName": {
+      "value": "kv-reqif-opa-demo"
+    },
+    "logAnalyticsWorkspaceName": {
+      "value": "law-reqif-opa-demo"
+    },
+    "containerAppEnvironmentName": {
+      "value": "reqif-opa-demo-env"
+    },
+    "containerAppName": {
+      "value": "reqif-opa-mcp-demo"
+    },
+    "containerImage": {
+      "value": "reqifopademoacr.azurecr.io/reqif-opa-mcp:latest"
+    },
+    "containerPort": {
+      "value": 8000
+    }
+  }
+}

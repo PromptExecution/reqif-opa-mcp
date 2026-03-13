@@ -211,6 +211,8 @@ __marimo__/
 
 # Evidence store - runtime artifacts from compliance gate evaluations
 evidence_store/
+artifacts/*
+!artifacts/README.md
 
 # Logs
 logs
