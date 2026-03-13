@@ -52,7 +52,10 @@ def extract_docling_document(
                 pdf_graph = _extract_pdf_with_pypdf(resolved, artifact, None)
                 if pdf_graph.nodes:
                     return Success(pdf_graph)
+            except (ModuleNotFoundError, ImportError) as exc:
+                return Failure(_missing_pypdf_error(resolved, exc))
             except Exception:
+                # Fall back to Docling-based extraction on unexpected PyPDF errors.
                 pass
 
             try:
@@ -176,6 +179,21 @@ def extract_docling_document(
         )
     except Exception as exc:
         return Failure(exc)
+
+
+def _missing_pypdf_error(path: Path, exc: Exception) -> Exception:
+    """
+    Build a helpful error explaining that the PyPDF-based extractor is unavailable.
+
+    This typically means the optional 'ingest-lite' extra (which provides 'pypdf')
+    is not installed.
+    """
+    return RuntimeError(
+        "PyPDF-based PDF extraction failed for "
+        f"'{path}': {exc}. "
+        "The 'pypdf' dependency is optional; install the 'ingest-lite' extra, e.g.:\n"
+        "    pip install 'reqif-ingest[ingest-lite]'"
+    )
 
 
 def distill_docling_graph(graph: DocumentGraph) -> list[RequirementCandidate]:
