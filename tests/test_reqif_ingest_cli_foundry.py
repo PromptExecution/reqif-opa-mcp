@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from importlib.util import find_spec
+
+import pytest
 from returns.result import Failure, Success
 
 from reqif_ingest_cli.foundry_adapter import (
@@ -22,6 +25,7 @@ def test_load_foundry_chat_config_requires_expected_env_keys() -> None:
     assert "REQIF_INGEST_FOUNDRY_ENDPOINT" in str(error)
 
 
+@pytest.mark.skipif(find_spec("azure.ai.inference") is None, reason="Install extra 'llm-review' for Foundry client tests.")
 def test_load_foundry_chat_config_and_create_client() -> None:
     """Foundry client creation should not require a live network call."""
     result = load_foundry_chat_config(

@@ -233,6 +233,9 @@ Current implementation notes:
 - PDF prefers `pypdf` for offline text-layer extraction
 - `docling` remains the richer path for DOCX and Markdown
 - Azure Foundry integration is optional and not part of the deterministic first pass
+- Install `ingest-lite` with `uv sync --extra ingest-lite` for XLSX plus text-layer PDF support
+- Install `ingest-full` with `uv sync --extra ingest-full` for docling-backed extraction
+- Install `llm-review` with `uv sync --extra llm-review` for optional Foundry quality-eval hooks
 
 See [README-reqif-ingest-cli.md](README-reqif-ingest-cli.md) for command details.
 See [README-azure.md](README-azure.md) for Azure DevOps CI, deployment, and demo guidance.

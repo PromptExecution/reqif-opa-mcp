@@ -38,7 +38,7 @@ jobs:
           set -euo pipefail
           export PATH="$HOME/.local/bin:$PATH"
           export UV_CACHE_DIR=.uv-cache
-          uv sync
+          uv sync --extra ingest-lite
           just demo-artifacts "${{ parameters.artifactRoot }}/demo" "${{ parameters.artifactRoot }}/selftest" "${{ parameters.enforceGateFailures }}"
         continueOnError: ${{ eq(parameters.enforceGateFailures, 'false') }}
         displayName: Build self-test and demo artifacts

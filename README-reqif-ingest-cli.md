@@ -13,6 +13,15 @@ Engineer view:
 - use this surface when the starting point is an artifact such as XLSX, PDF, DOCX, or Markdown
 - use `reqif_mcp` when the starting point is already ReqIF
 
+Install profiles:
+
+- `uv sync --extra ingest-lite`
+  - XLSX and text-layer PDF extraction (`openpyxl`, `pypdf`)
+- `uv sync --extra ingest-full`
+  - richer DOCX/Markdown/PDF extraction (`docling` stack)
+- `uv sync --extra llm-review`
+  - optional Foundry/OpenAI-compatible review adapter
+
 ```mermaid
 flowchart LR
     ART[Source artifact] --> EXT[Deterministic extraction]

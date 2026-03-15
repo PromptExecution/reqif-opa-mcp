@@ -7,7 +7,7 @@ default:
 
 # Dev
 install:
-    uv sync
+    uv sync --extra ingest-lite
 
 dev:
     uv run python -m reqif_mcp
@@ -216,14 +216,27 @@ demo-artifacts out="artifacts/demo" selftest_out="artifacts/selftest" enforce="f
     exit 0
 
 # Docker
-docker-build tag="latest":
-    docker build -t ghcr.io/promptexecution/reqif-opa-mcp:{{tag}} .
+docker-build tag="latest" target="runtime-lite":
+    docker build --target {{target}} -t ghcr.io/promptexecution/reqif-opa-mcp:{{tag}} .
+
+build-runtime-lite tag="runtime-lite":
+    just docker-build {{tag}} runtime-lite
+
+build-ingest-full tag="ingest-full":
+    just docker-build {{tag}} ingest-full
 
 docker-run tag="latest" port="8000":
     docker run --rm -p {{port}}:8000 \
         -v $(pwd)/evidence_store:/app/evidence_store \
         -v $(pwd)/opa-bundles:/app/opa-bundles \
         ghcr.io/promptexecution/reqif-opa-mcp:{{tag}}
+
+smoke-runtime-lite tag="runtime-lite":
+    docker run --rm -d --name reqif-runtime-lite -p 18000:8000 \
+        ghcr.io/promptexecution/reqif-opa-mcp:{{tag}}
+    sleep 3
+    curl -fsSL http://127.0.0.1:18000/health
+    docker rm -f reqif-runtime-lite
 
 docker-push tag="latest":
     docker push ghcr.io/promptexecution/reqif-opa-mcp:{{tag}}

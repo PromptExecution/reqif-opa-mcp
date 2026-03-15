@@ -36,7 +36,7 @@ jobs:
           mkdir -p ${{ parameters.artifactRoot }}/tests
           export PATH="$HOME/.local/bin:$PATH"
           export UV_CACHE_DIR=.uv-cache
-          uv sync
+          uv sync --extra ingest-lite
           just ci-check "${{ parameters.artifactRoot }}/tests/junit.xml"
           uv run ruff check . > "${{ parameters.artifactRoot }}/tests/ruff.txt"
           uv run mypy reqif_mcp reqif_ingest_cli > "${{ parameters.artifactRoot }}/tests/mypy.txt"
