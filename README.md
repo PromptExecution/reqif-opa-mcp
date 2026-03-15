@@ -238,6 +238,7 @@ Current implementation notes:
 - Install `llm-review` with `uv sync --extra llm-review` for optional Foundry quality-eval hooks
 
 See [README-reqif-ingest-cli.md](README-reqif-ingest-cli.md) for command details.
+See [README-azure.md](README-azure.md) for Azure DevOps CI, deployment, and demo guidance.
 
 ## Samples and Fixtures
 
@@ -291,6 +292,8 @@ Recommended CI/CD workflow shape for this repo:
 - baseline drift check
   - trigger on changes to tracked source documents
   - emit ReqIF and compare normalized requirements against the last known baseline
+
+Azure DevOps deployment and demo details live in [README-azure.md](README-azure.md).
 
 Recommended Copilot usage in this repo:
 
