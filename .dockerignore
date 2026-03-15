@@ -28,10 +28,11 @@ build/
 *~
 .DS_Store
 
-# Documentation (keep LICENSE and README)
+# Documentation (keep runtime docs copied by Dockerfile)
 docs/
 *.md
 !README.md
+!README-reqif-ingest-cli.md
 !LICENSE
 
 # CI/CD
@@ -52,7 +53,7 @@ evidence_store/
 !evidence_store/.gitkeep
 
 # Development tools
-justfile
+!justfile
 Dockerfile
 .dockerignore
 docker-compose.yml

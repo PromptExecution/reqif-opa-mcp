@@ -47,19 +47,24 @@ def extract_docling_document(
             return artifact_result
         artifact = artifact_result.unwrap()
 
-        from docling.datamodel.base_models import InputFormat
-        from docling.datamodel.pipeline_options import PdfPipelineOptions
-        from docling.document_converter import DocumentConverter, PdfFormatOption
-
         if suffix == ".pdf":
-            pdf_graph = None
             try:
                 pdf_graph = _extract_pdf_with_pypdf(resolved, artifact, None)
-            except Exception:
-                pdf_graph = None
-            else:
                 if pdf_graph.nodes:
                     return Success(pdf_graph)
+            except (ModuleNotFoundError, ImportError) as exc:
+                return Failure(_missing_pypdf_error(resolved, exc))
+            except Exception:
+                # Fall back to Docling-based extraction on unexpected PyPDF errors.
+                pass
+
+            try:
+                from docling.datamodel.base_models import InputFormat
+                from docling.datamodel.pipeline_options import PdfPipelineOptions
+                from docling.document_converter import DocumentConverter, PdfFormatOption
+            except (ImportError, ModuleNotFoundError) as exc:
+                return Failure(_missing_docling_error(resolved, exc))
+
             try:
                 converter = DocumentConverter(
                     allowed_formats=[InputFormat.PDF],
@@ -80,6 +85,10 @@ def extract_docling_document(
             except Exception as exc:
                 return Success(_extract_pdf_with_pypdf(resolved, artifact, exc))
         else:
+            try:
+                from docling.document_converter import DocumentConverter
+            except (ImportError, ModuleNotFoundError) as exc:
+                return Failure(_missing_docling_error(resolved, exc))
             converter = DocumentConverter()
             conversion = converter.convert(resolved)
             document = conversion.document
@@ -172,6 +181,21 @@ def extract_docling_document(
         return Failure(exc)
 
 
+def _missing_pypdf_error(path: Path, exc: Exception) -> Exception:
+    """
+    Build a helpful error explaining that the PyPDF-based extractor is unavailable.
+
+    This typically means the optional 'ingest-lite' extra (which provides 'pypdf')
+    is not installed.
+    """
+    return RuntimeError(
+        "PyPDF-based PDF extraction failed for "
+        f"'{path}': {exc}. "
+        "The 'pypdf' dependency is optional; install the 'ingest-lite' extra, e.g.:\n"
+        "    pip install 'reqif-ingest[ingest-lite]'"
+    )
+
+
 def distill_docling_graph(graph: DocumentGraph) -> list[RequirementCandidate]:
     """Distill normative paragraph candidates from a Docling graph."""
     candidates: list[RequirementCandidate] = []
@@ -218,7 +242,7 @@ def _extract_pdf_with_pypdf(
     path: Path,
     artifact: ArtifactRecord,
     docling_error: Exception | None,
-) -> DocumentGraph:
+    ) -> DocumentGraph:
     """Fallback PDF extractor when Docling cannot initialize offline models."""
     from pypdf import PdfReader
 
@@ -266,4 +290,13 @@ def _extract_pdf_with_pypdf(
             "extractor": "pypdf",
             "fallback_reason": str(docling_error) if docling_error is not None else None,
         },
+    )
+
+
+def _missing_docling_error(path: Path, import_error: Exception) -> ValueError:
+    """Return a guided install error when docling extras are missing."""
+    return ValueError(
+        f"Docling extractor is not available for {path.name}. "
+        f"Install optional dependency group 'ingest-full' via 'uv sync --extra ingest-full'. "
+        f"Import error: {import_error}"
     )
