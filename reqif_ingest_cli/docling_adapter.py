@@ -87,7 +87,7 @@ def extract_docling_document(
         else:
             try:
                 from docling.document_converter import DocumentConverter
-            except Exception as exc:
+            except (ImportError, ModuleNotFoundError) as exc:
                 return Failure(_missing_docling_error(resolved, exc))
             converter = DocumentConverter()
             conversion = converter.convert(resolved)
