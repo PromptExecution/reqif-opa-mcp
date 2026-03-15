@@ -90,7 +90,7 @@ Set these pipeline variables:
 | `containerAppName` | deployed app name | `reqif-opa-mcp-demo` |
 | `containerPort` | exposed app port | `8000` |
 
-If `azureServiceConnection` is empty, the deploy stages are skipped and the pipeline behaves as CI plus self-test only.
+If `azureServiceConnection` is empty, the deploy stages are skipped and the pipeline behaves as CI plus self-test only. The image/deploy/smoke stages also require a non-empty `acrName` and only run on non–Pull Request builds (i.e., not when `Build.Reason == PullRequest`).
 
 ### 3. Run the pipeline in CI and self-test mode
 
@@ -103,12 +103,14 @@ Leave `azureServiceConnection` empty for the first run. This validates:
 
 ### 4. Enable image and deploy stages
 
-Once CI and self-test pass, set `azureServiceConnection` and rerun. The pipeline will:
+Once CI and self-test pass, set `azureServiceConnection` and `acrName` and rerun a non‑PR build (for example, on `main`). In that case, the pipeline will:
 
 - build and push the image to ACR
 - deploy or update the Azure Container App
 - call `/health`
 - publish live smoke artifacts
+
+Pull Request (`Build.Reason == PullRequest`) validation runs will still execute CI and self-test stages only; image, deploy, and smoke stages are skipped for PR builds.
 
 ## Pipeline Stages
 
