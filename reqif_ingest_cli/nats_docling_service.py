@@ -15,6 +15,17 @@ Reply payload: the same JSON shape `reqif_ingest_cli extract` prints, or
 Run:
     NATS_URL=nats://127.0.0.1:14222 NATS_USER=... NATS_PASSWORD=... \\
         uv run python -m reqif_ingest_cli.nats_docling_service
+
+On-demand lifecycle: this process is meant to be started by systemd
+(a Podman Quadlet, see ../deploy/quadlet/docling-nats-service.container)
+only when needed, not run perpetually — vultr1's NATS server is the only
+thing meant to stay always-on (per the b00t hive's "small standing
+coordination layer, everything else on-demand" design). To make that
+enforceable rather than just a convention, this process tracks the time
+of its last handled request and exits cleanly (code 0) after
+IDLE_TIMEOUT_SECONDS (default 300) with none — systemd (Restart=no) then
+leaves it stopped until the next on-demand start rather than restarting
+it into another idle loop.
 """
 
 from __future__ import annotations
@@ -22,6 +33,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import time
 from dataclasses import asdict
 
 import nats
@@ -32,6 +44,7 @@ from reqif_ingest_cli.xlsx_extractor import extract_xlsx_document
 
 SERVICE_NAME = "ledgrrr-docling"
 SERVICE_VERSION = "0.1.0"
+DEFAULT_IDLE_TIMEOUT_SECONDS = 300.0
 
 
 def _run_extract(path: str, profile: str) -> dict:
@@ -54,7 +67,8 @@ def _run_extract(path: str, profile: str) -> dict:
     return json.loads(json.dumps(asdict(graph), default=str))
 
 
-async def _extract_handler(request: micro.Request) -> None:
+async def _extract_handler(request: micro.Request, last_activity: list[float]) -> None:
+    last_activity[0] = time.monotonic()
     try:
         payload = json.loads(request.data or b"{}")
         path = payload["path"]
@@ -65,12 +79,24 @@ async def _extract_handler(request: micro.Request) -> None:
         await request.respond(json.dumps(reply).encode())
     except Exception as exc:  # noqa: BLE001 - reply with the error, don't crash the service
         await request.respond_error("500", str(exc))
+    finally:
+        last_activity[0] = time.monotonic()
+
+
+async def _idle_watchdog(last_activity: list[float], idle_timeout: float) -> None:
+    while True:
+        await asyncio.sleep(5)
+        if time.monotonic() - last_activity[0] >= idle_timeout:
+            return
 
 
 async def main() -> None:
     url = os.environ.get("NATS_URL", "nats://127.0.0.1:4222")
     user = os.environ.get("NATS_USER")
     password = os.environ.get("NATS_PASSWORD")
+    idle_timeout = float(
+        os.environ.get("IDLE_TIMEOUT_SECONDS", DEFAULT_IDLE_TIMEOUT_SECONDS)
+    )
 
     nc = await nats.connect(url, user=user, password=password)
     svc = await micro.add_service(
@@ -84,11 +110,20 @@ async def main() -> None:
         ),
     )
     group = svc.add_group(name="ledgrrr")
-    await group.add_endpoint(name="extract", handler=_extract_handler)
+    last_activity = [time.monotonic()]
+    await group.add_endpoint(
+        name="extract",
+        handler=lambda request: _extract_handler(request, last_activity),
+    )
 
     print(f"[{SERVICE_NAME}] listening on '{url}' as subject 'ledgrrr.extract'", flush=True)
+    print(
+        f"[{SERVICE_NAME}] on-demand mode: exiting after {idle_timeout:.0f}s idle",
+        flush=True,
+    )
     try:
-        await asyncio.Event().wait()
+        await _idle_watchdog(last_activity, idle_timeout)
+        print(f"[{SERVICE_NAME}] idle timeout reached, shutting down", flush=True)
     finally:
         await svc.stop()
         await nc.close()

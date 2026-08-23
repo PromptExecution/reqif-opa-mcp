@@ -92,5 +92,32 @@ CMD ["python", "-m", "reqif_mcp", "--http", "--host", "0.0.0.0", "--port", "8000
 # Demo-full can carry sample/selftest assets while sharing ingest-full runtime.
 FROM ingest-full AS demo-full
 
+# Docling NATS Micro Service — on-demand only (see
+# deploy/quadlet/docling-nats-service.container), never a perpetually
+# running server. Speaks NATS, not HTTP: no exposed port, no HTTP
+# healthcheck.
+FROM deps-lite AS deps-docling-nats
+RUN uv sync --frozen --no-dev --extra ingest-full --extra nats-service
+
+FROM python:${PYTHON_VERSION}-slim AS docling-nats-service
+LABEL org.opencontainers.image.title="ReqIF-OPA-MCP Docling NATS Service" \
+      org.opencontainers.image.description="On-demand Docling extraction exposed as a NATS Micro Service (ledgrrr-docling)" \
+      org.opencontainers.image.vendor="PromptExecution" \
+      org.opencontainers.image.source="https://github.com/PromptExecution/reqif-opa-mcp"
+
+RUN groupadd -r reqif && useradd -r -g reqif -u 1000 reqif
+WORKDIR /app
+COPY --from=deps-docling-nats --chown=reqif:reqif /build/.venv /app/.venv
+COPY --chown=reqif:reqif reqif_ingest_cli/ /app/reqif_ingest_cli/
+COPY --chown=reqif:reqif pyproject.toml README-reqif-ingest-cli.md LICENSE /app/
+
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    IDLE_TIMEOUT_SECONDS=300
+
+USER reqif
+CMD ["python", "-m", "reqif_ingest_cli.nats_docling_service"]
+
 # Default build target stays lean.
 FROM runtime-lite AS default

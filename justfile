@@ -230,6 +230,20 @@ build-runtime-lite tag="runtime-lite":
 build-ingest-full tag="ingest-full":
     just docker-build {{tag}} ingest-full
 
+build-docling-nats-service tag="docling-nats-service":
+    just docker-build {{tag}} docling-nats-service
+
+# On-demand smoke test: run the built image directly under podman (not
+# via the Quadlet unit) with a short idle timeout, and confirm it exits
+# on its own — proves the container doesn't run perpetually.
+smoke-docling-nats-service tag="docling-nats-service" idle="20":
+    podman run --rm --network host \
+        -e NATS_URL="${NATS_URL:-nats://127.0.0.1:4222}" \
+        -e NATS_USER="${NATS_USER:-}" \
+        -e NATS_PASSWORD="${NATS_PASSWORD:-}" \
+        -e IDLE_TIMEOUT_SECONDS={{idle}} \
+        ghcr.io/promptexecution/reqif-opa-mcp:{{tag}}
+
 docker-run tag="latest" port="8000":
     docker run --rm -p {{port}}:8000 \
         -v $(pwd)/evidence_store:/app/evidence_store \
