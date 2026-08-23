@@ -24,6 +24,9 @@ ingest-full = [
 llm-review = [
     "azure-ai-inference>=1.0.0b9",
 ]
+nats-service = [
+    "nats-py>=2.15.0",
+]
 
 [dependency-groups]
 dev = [
