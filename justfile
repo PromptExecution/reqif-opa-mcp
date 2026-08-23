@@ -15,6 +15,11 @@ dev:
 serve port="8000":
     uv run python -m reqif_mcp --http --port {{port}}
 
+# Requires: uv sync --extra nats-service
+# NATS_URL/NATS_USER/NATS_PASSWORD select the target server; defaults to a local one.
+nats-service:
+    uv run python -m reqif_ingest_cli.nats_docling_service
+
 # Quality
 test:
     uv run pytest -v
