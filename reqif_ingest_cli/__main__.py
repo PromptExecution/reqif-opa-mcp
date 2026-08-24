@@ -10,7 +10,8 @@ from typing import Any
 from returns.result import Failure, Result
 
 from reqif_ingest_cli.artifact import register_artifact
-from reqif_ingest_cli.docling_adapter import distill_docling_graph, extract_docling_document
+from reqif_ingest_cli.docling_adapter import distill_docling_graph
+from reqif_ingest_cli.docling_backend import extract_docling_document
 from reqif_ingest_cli.foundry_adapter import describe_foundry_config
 from reqif_ingest_cli.models import RequirementCandidate
 from reqif_ingest_cli.reqif_emitter import emit_reqif_xml, write_reqif_xml
@@ -37,14 +38,14 @@ def main() -> None:
 
     if command == "extract":
         _handle_json_result(
-            _extract_document(args.path, profile=args.profile, source_uri=args.source_uri),
+            _extract_document(args.path, profile=args.profile, source_uri=args.source_uri, backend=args.backend),
             pretty=args.pretty,
         )
         return
 
     if command == "distill":
         _handle_json_result(
-            _distill_document(args.path, profile=args.profile, source_uri=args.source_uri),
+            _distill_document(args.path, profile=args.profile, source_uri=args.source_uri, backend=args.backend),
             pretty=args.pretty,
         )
         return
@@ -101,6 +102,12 @@ def _add_document_args(parser: argparse.ArgumentParser) -> None:
         help="Document profile override (default: auto)",
     )
     parser.add_argument("--source-uri", help="Optional original source URI")
+    parser.add_argument(
+        "--backend",
+        choices=["b00t", "local"],
+        default=None,
+        help="Docling backend to use (default: $REQIF_DOCLING_BACKEND or 'b00t')",
+    )
     parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output")
 
 
@@ -108,25 +115,27 @@ def _extract_document(
     path: str,
     profile: str,
     source_uri: str | None,
+    backend: str | None = None,
 ) -> Result[Any, Exception]:
     """Dispatch extraction based on file extension."""
     suffix = Path(path).suffix.lower()
     if suffix in {".xlsx", ".xlsm"}:
         return extract_xlsx_document(path, source_uri=source_uri, profile=profile)
-    return extract_docling_document(path, source_uri=source_uri, profile=profile)
+    return extract_docling_document(path, source_uri=source_uri, profile=profile, backend=backend)
 
 
 def _distill_document(
     path: str,
     profile: str,
     source_uri: str | None,
+    backend: str | None = None,
 ) -> Result[list[RequirementCandidate], Exception]:
     """Dispatch distillation based on file extension."""
     suffix = Path(path).suffix.lower()
     if suffix in {".xlsx", ".xlsm"}:
         return distill_xlsx_requirements(path, source_uri=source_uri, profile=profile)
 
-    graph_result = extract_docling_document(path, source_uri=source_uri, profile=profile)
+    graph_result = extract_docling_document(path, source_uri=source_uri, profile=profile, backend=backend)
     if isinstance(graph_result, Failure):
         return graph_result
     return _success(distill_docling_graph(graph_result.unwrap()))
@@ -134,7 +143,9 @@ def _distill_document(
 
 def _emit_reqif_command(args: argparse.Namespace) -> None:
     """Emit ReqIF for a source document."""
-    candidates_result = _distill_document(args.path, profile=args.profile, source_uri=args.source_uri)
+    candidates_result = _distill_document(
+        args.path, profile=args.profile, source_uri=args.source_uri, backend=args.backend
+    )
     if isinstance(candidates_result, Failure):
         _fail(candidates_result.failure())
     candidates: list[RequirementCandidate] = candidates_result.unwrap()
