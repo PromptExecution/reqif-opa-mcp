@@ -3,12 +3,33 @@ ReqIF 1.2 XML Parser Module
 
 Parses ReqIF 1.2 XML documents and extracts SpecObjects, SpecTypes,
 AttributeDefinitions, and AttributeValues into a structured format.
+
+Delegates the actual parsing to the Apache-2.0 StrictDoc `reqif` package
+(`reqif.parser.ReqIFParser`) rather than hand-rolling ReqIF XML handling:
+`reqif` already implements the full ReqIF 1.2 element model (the standard
+`<THE-HEADER><REQ-IF-HEADER>`/`<CORE-CONTENT><REQ-IF-CONTENT>` wrapper
+structure, every `SpecObjectAttributeType`, ReqIFz archives), is exercised
+against real tool exports, and was already a declared dependency here
+(`pyproject.toml`) that nothing in this module actually called. This
+module's job is narrowed to one thing: map a `reqif.reqif_bundle.ReqIFBundle`
+onto the `ReqIFData` contract the rest of this codebase (server.py, the
+normalization/OPA layers, every existing test) already depends on, so that
+contract -- not the parsing implementation -- is what downstream code needs
+to keep working.
 """
 
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, TypedDict
 
+from lxml.etree import XMLSyntaxError
+from reqif.models.error_handling import (
+    ReqIFSchemaError,
+    ReqIFXMLParsingError,
+)
+from reqif.models.reqif_spec_object import ReqIFSpecObject as _SDSpecObject
+from reqif.models.reqif_spec_object_type import ReqIFSpecObjectType as _SDSpecObjectType
+from reqif.parser import ReqIFParser
+from reqif.reqif_bundle import ReqIFBundle
 from returns.result import Failure, Result, Success
 
 
@@ -60,8 +81,6 @@ class ReqIFData(TypedDict):
     attribute_definitions: list[AttributeDefinition]
 
 
-
-
 def parse_reqif_xml(xml_input: str | Path) -> Result[ReqIFData, Exception]:
     """
     Parse ReqIF 1.2 XML from string or file path.
@@ -73,192 +92,106 @@ def parse_reqif_xml(xml_input: str | Path) -> Result[ReqIFData, Exception]:
         Result containing parsed ReqIFData or Exception
     """
     try:
-        # Parse XML
-        # Check if input is a Path object or a string that represents an existing file path
+        # Same input-classification rules the previous hand-rolled parser
+        # used: a `Path`, or a string that names an existing file, is read
+        # from disk; anything else is treated as raw XML content.
         if isinstance(xml_input, Path):
-            tree = ET.parse(xml_input)
-            root = tree.getroot()
+            content = xml_input.read_text(encoding="UTF-8")
         elif isinstance(xml_input, str):
-            # Try to determine if it's a file path or XML string
-            # XML strings start with '<', file paths don't
-            if xml_input.strip().startswith('<'):
-                # It's an XML string
-                root = ET.fromstring(xml_input)
+            if xml_input.strip().startswith("<"):
+                content = xml_input
             else:
-                # It might be a file path
                 path = Path(xml_input)
-                if path.exists():
-                    tree = ET.parse(path)
-                    root = tree.getroot()
-                else:
-                    # Not a valid file path, try parsing as XML string
-                    root = ET.fromstring(xml_input)
+                content = (
+                    path.read_text(encoding="UTF-8") if path.exists() else xml_input
+                )
         else:
             return Failure(ValueError(f"Invalid xml_input type: {type(xml_input)}"))
 
-        # Check if root is REQ-IF element
-        if not root.tag.endswith("REQ-IF"):
-            return Failure(
-                ValueError(f"Invalid ReqIF root element: {root.tag}. Expected REQ-IF")
-            )
-
-        # Parse header
-        header_result = _parse_header(root)
-        if isinstance(header_result, Failure):
-            return header_result
-
-        # Parse content
-        content_result = _parse_content(root)
-        if isinstance(content_result, Failure):
-            return content_result
-
-        header = header_result.unwrap()
-        content = content_result.unwrap()
-
-        reqif_data: ReqIFData = {
-            "header": header,
-            "spec_objects": content["spec_objects"],
-            "spec_types": content["spec_types"],
-            "attribute_definitions": content["attribute_definitions"],
-        }
-
-        return Success(reqif_data)
-
-    except ET.ParseError as e:
-        return Failure(ValueError(f"Malformed XML: {e}"))
-    except Exception as e:
-        return Failure(e)
-
-
-def _parse_header(root: ET.Element) -> Result[ReqIFHeader, Exception]:
-    """Parse REQ-IF-HEADER section."""
-    try:
-        # Find the REQ-IF-HEADER element
-        header_elem = root.find(".//REQ-IF-HEADER")
-        if header_elem is None:
-            return Failure(ValueError("REQ-IF-HEADER element not found"))
-
-        identifier = header_elem.get("IDENTIFIER", "")
-        title_elem = header_elem.find(".//TITLE")
-        comment_elem = header_elem.find(".//COMMENT")
-
-        title_text = title_elem.text if title_elem is not None and title_elem.text else ""
-
-        header: ReqIFHeader = {
-            "identifier": identifier,
-            "title": title_text,
-            "comment": comment_elem.text if comment_elem is not None else None,
-        }
-
-        return Success(header)
-    except Exception as e:
-        return Failure(e)
-
-
-class _ContentData(TypedDict):
-    """Intermediate content data structure."""
-
-    spec_objects: list[SpecObject]
-    spec_types: list[SpecType]
-    attribute_definitions: list[AttributeDefinition]
-
-
-def _parse_content(root: ET.Element) -> Result[_ContentData, Exception]:
-    """Parse REQ-IF-CONTENT section."""
-    try:
-        content_elem = root.find(".//REQ-IF-CONTENT")
-        if content_elem is None:
-            return Failure(ValueError("REQ-IF-CONTENT element not found"))
-
-        # Parse SpecTypes
-        spec_types: list[SpecType] = []
-        spec_types_elem = content_elem.find(".//SPEC-TYPES")
-        if spec_types_elem is not None:
-            for spec_type_elem in spec_types_elem.findall(".//SPEC-OBJECT-TYPE"):
-                identifier = spec_type_elem.get("IDENTIFIER", "")
-                long_name = spec_type_elem.get("LONG-NAME", "")
-
-                # Parse attribute definitions for this spec type
-                attr_defs: list[AttributeDefinition] = []
-                spec_attrs_elem = spec_type_elem.find(".//SPEC-ATTRIBUTES")
-                if spec_attrs_elem is not None:
-                    for attr_def_elem in spec_attrs_elem.findall(
-                        ".//ATTRIBUTE-DEFINITION-STRING"
-                    ):
-                        attr_id = attr_def_elem.get("IDENTIFIER", "")
-                        attr_long_name = attr_def_elem.get("LONG-NAME", "")
-                        attr_defs.append(
-                            {
-                                "identifier": attr_id,
-                                "long_name": attr_long_name,
-                                "data_type": "string",
-                            }
-                        )
-
-                spec_types.append(
-                    {
-                        "identifier": identifier,
-                        "long_name": long_name,
-                        "attribute_definitions": attr_defs,
-                    }
+        try:
+            bundle = ReqIFParser.parse_from_string(content)
+        except ReqIFXMLParsingError as exception:
+            message = str(exception)
+            if "Expected root tag to be REQ-IF" in message:
+                # Preserve this module's own established error wording (all
+                # existing callers/tests match on it) while keeping the
+                # library's own diagnostic for the actual tag found.
+                return Failure(
+                    ValueError(
+                        f"Invalid ReqIF root element. Expected REQ-IF. ({message})"
+                    )
                 )
+            return Failure(ValueError(f"Malformed XML: {message}"))
+        except (XMLSyntaxError, ReqIFSchemaError) as exception:
+            return Failure(ValueError(f"Malformed XML: {exception}"))
 
-        # Parse SpecObjects
-        spec_objects: list[SpecObject] = []
-        spec_objects_elem = content_elem.find(".//SPEC-OBJECTS")
-        if spec_objects_elem is not None:
-            for spec_obj_elem in spec_objects_elem.findall(".//SPEC-OBJECT"):
-                identifier = spec_obj_elem.get("IDENTIFIER", "")
-
-                # Get type reference
-                type_elem = spec_obj_elem.find(".//TYPE/SPEC-OBJECT-TYPE-REF")
-                spec_type_ref = ""
-                if type_elem is not None and type_elem.text:
-                    spec_type_ref = type_elem.text
-
-                # Parse attribute values
-                attr_values: list[AttributeValue] = []
-                values_elem = spec_obj_elem.find(".//VALUES")
-                if values_elem is not None:
-                    for attr_val_elem in values_elem.findall(
-                        ".//ATTRIBUTE-VALUE-STRING"
-                    ):
-                        def_elem = attr_val_elem.find(".//DEFINITION")
-                        def_ref = ""
-                        if def_elem is not None:
-                            attr_def_ref_elem = def_elem.find(
-                                ".//ATTRIBUTE-DEFINITION-STRING-REF"
-                            )
-                            if (
-                                attr_def_ref_elem is not None
-                                and attr_def_ref_elem.text
-                            ):
-                                def_ref = attr_def_ref_elem.text
-
-                        value_elem = attr_val_elem.find(".//THE-VALUE")
-                        value = value_elem.text if value_elem is not None else ""
-
-                        attr_values.append({"definition_ref": def_ref, "value": value})
-
-                spec_objects.append(
-                    {
-                        "identifier": identifier,
-                        "spec_type_ref": spec_type_ref,
-                        "attributes": attr_values,
-                    }
-                )
-
-        # Collect all attribute definitions
-        all_attr_defs: list[AttributeDefinition] = []
-        for spec_type in spec_types:
-            all_attr_defs.extend(spec_type["attribute_definitions"])
-
-        return Success(
-            {
-                "spec_objects": spec_objects,
-                "spec_types": spec_types,
-                "attribute_definitions": all_attr_defs,
-            }
-        )
-    except Exception as e:
+        return _map_bundle(bundle)
+    except Exception as e:  # noqa: BLE001 - surfaced as a typed Failure, not raised
         return Failure(e)
+
+
+def _map_bundle(bundle: ReqIFBundle) -> Result[ReqIFData, Exception]:
+    """Map a parsed `ReqIFBundle` onto this module's `ReqIFData` contract."""
+    if bundle.req_if_header is None:
+        return Failure(ValueError("REQ-IF-HEADER element not found"))
+    header: ReqIFHeader = {
+        "identifier": bundle.req_if_header.identifier or "",
+        "title": bundle.req_if_header.title or "",
+        "comment": bundle.req_if_header.comment,
+    }
+
+    if bundle.core_content is None or bundle.core_content.req_if_content is None:
+        return Failure(ValueError("REQ-IF-CONTENT element not found"))
+    content = bundle.core_content.req_if_content
+
+    spec_types = [
+        _map_spec_type(t)
+        for t in (content.spec_types or [])
+        if isinstance(t, _SDSpecObjectType)
+    ]
+    spec_objects = [_map_spec_object(o) for o in (content.spec_objects or [])]
+
+    # Flattened across every spec type, same as the previous parser -- a
+    # caller that wants a type's own definitions already has
+    # `spec_type["attribute_definitions"]`.
+    attribute_definitions = [
+        attr_def
+        for spec_type in spec_types
+        for attr_def in spec_type["attribute_definitions"]
+    ]
+
+    reqif_data: ReqIFData = {
+        "header": header,
+        "spec_objects": spec_objects,
+        "spec_types": spec_types,
+        "attribute_definitions": attribute_definitions,
+    }
+    return Success(reqif_data)
+
+
+def _map_spec_type(spec_type: _SDSpecObjectType) -> SpecType:
+    attr_defs: list[AttributeDefinition] = [
+        {
+            "identifier": attr_def.identifier,
+            "long_name": attr_def.long_name or "",
+            "data_type": attr_def.attribute_type.name.lower(),
+        }
+        for attr_def in (spec_type.attribute_definitions or [])
+    ]
+    return {
+        "identifier": spec_type.identifier,
+        "long_name": spec_type.long_name or "",
+        "attribute_definitions": attr_defs,
+    }
+
+
+def _map_spec_object(spec_object: _SDSpecObject) -> SpecObject:
+    attributes: list[AttributeValue] = [
+        {"definition_ref": attr.definition_ref, "value": attr.value}
+        for attr in (spec_object.attributes or [])
+    ]
+    return {
+        "identifier": spec_object.identifier,
+        "spec_type_ref": spec_object.spec_object_type or "",
+        "attributes": attributes,
+    }
