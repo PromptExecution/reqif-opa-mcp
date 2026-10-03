@@ -11,6 +11,8 @@ from returns.result import Failure, Result, Success
 from reqif_ingest_cli.models import RequirementCandidate, SourceAnchor
 from reqif_ingest_cli.utils import json_dumps, stable_id
 
+_DATATYPE_STRING_ID = "reqif-ingest-datatype-string"
+
 _ATTRIBUTE_DEFINITIONS: list[tuple[str, str]] = [
     ("attr-key", "Key"),
     ("attr-text", "Text"),
@@ -31,9 +33,12 @@ def emit_reqif_xml(
 ) -> Result[str, Exception]:
     """Emit a small ReqIF baseline from derived candidates."""
     try:
-        root = ET.Element("REQ-IF")
+        root = ET.Element(
+            "REQ-IF", xmlns="http://www.omg.org/spec/ReqIF/20110401/reqif.xsd"
+        )
+        the_header = ET.SubElement(root, "THE-HEADER")
         header = ET.SubElement(
-            root,
+            the_header,
             "REQ-IF-HEADER",
             IDENTIFIER=stable_id("reqif-header", title, len(candidates)),
         )
@@ -41,7 +46,14 @@ def emit_reqif_xml(
         if comment:
             ET.SubElement(header, "COMMENT").text = comment
 
-        content = ET.SubElement(root, "REQ-IF-CONTENT")
+        core_content = ET.SubElement(root, "CORE-CONTENT")
+        content = ET.SubElement(core_content, "REQ-IF-CONTENT")
+        data_types = ET.SubElement(content, "DATATYPES")
+        ET.SubElement(
+            data_types,
+            "DATATYPE-DEFINITION-STRING",
+            {"IDENTIFIER": _DATATYPE_STRING_ID, "LONG-NAME": "String"},
+        )
         spec_types = ET.SubElement(content, "SPEC-TYPES")
         spec_object_type = ET.SubElement(
             spec_types,
@@ -53,7 +65,7 @@ def emit_reqif_xml(
         )
         spec_attributes = ET.SubElement(spec_object_type, "SPEC-ATTRIBUTES")
         for attribute_id, long_name in _ATTRIBUTE_DEFINITIONS:
-            ET.SubElement(
+            attribute_definition = ET.SubElement(
                 spec_attributes,
                 "ATTRIBUTE-DEFINITION-STRING",
                 {
@@ -61,6 +73,10 @@ def emit_reqif_xml(
                     "LONG-NAME": long_name,
                 },
             )
+            attribute_type = ET.SubElement(attribute_definition, "TYPE")
+            ET.SubElement(
+                attribute_type, "DATATYPE-DEFINITION-STRING-REF"
+            ).text = _DATATYPE_STRING_ID
 
         spec_objects = ET.SubElement(content, "SPEC-OBJECTS")
         for candidate in candidates:
@@ -106,11 +122,18 @@ def _append_spec_object(parent: ET.Element, candidate: RequirementCandidate) -> 
 
 
 def _append_string_value(parent: ET.Element, attribute_id: str, value: str) -> None:
-    """Append a ReqIF ATTRIBUTE-VALUE-STRING element."""
-    attribute_value = ET.SubElement(parent, "ATTRIBUTE-VALUE-STRING")
+    """Append a ReqIF ATTRIBUTE-VALUE-STRING element.
+
+    `THE-VALUE` is an XML attribute on `ATTRIBUTE-VALUE-STRING` itself (ReqIF
+    1.2's `AttributeValueString` production), not a child element -- see
+    `reqif.parsers.attribute_value_parser`, which reads
+    `attribute_xml.attrib["THE-VALUE"]`.
+    """
+    attribute_value = ET.SubElement(
+        parent, "ATTRIBUTE-VALUE-STRING", {"THE-VALUE": value}
+    )
     definition = ET.SubElement(attribute_value, "DEFINITION")
     ET.SubElement(definition, "ATTRIBUTE-DEFINITION-STRING-REF").text = attribute_id
-    ET.SubElement(attribute_value, "THE-VALUE").text = value
 
 
 def _format_anchors(anchors: Sequence[SourceAnchor]) -> str:

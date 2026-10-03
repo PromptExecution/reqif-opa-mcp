@@ -19,14 +19,18 @@ def test_compliance_gate_fails_on_empty_baseline(tmp_path: Path) -> None:
     reqif_path = tmp_path / "empty.reqif"
     reqif_path.write_text(
         """<?xml version="1.0" encoding="UTF-8"?>
-<REQ-IF>
-  <REQ-IF-HEADER IDENTIFIER="header-001">
-    <TITLE>Empty Baseline</TITLE>
-  </REQ-IF-HEADER>
-  <REQ-IF-CONTENT>
-    <SPEC-TYPES />
-    <SPEC-OBJECTS />
-  </REQ-IF-CONTENT>
+<REQ-IF xmlns="http://www.omg.org/spec/ReqIF/20110401/reqif.xsd">
+  <THE-HEADER>
+    <REQ-IF-HEADER IDENTIFIER="header-001">
+      <TITLE>Empty Baseline</TITLE>
+    </REQ-IF-HEADER>
+  </THE-HEADER>
+  <CORE-CONTENT>
+    <REQ-IF-CONTENT>
+      <SPEC-TYPES />
+      <SPEC-OBJECTS />
+    </REQ-IF-CONTENT>
+  </CORE-CONTENT>
 </REQ-IF>
 """,
         encoding="utf-8",

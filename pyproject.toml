@@ -30,8 +30,19 @@ nats-service = [
 
 [dependency-groups]
 dev = [
+    "lxml-stubs>=0.5.1",
     "mypy>=1.19.1",
     "pytest>=9.0.2",
     "ruff>=0.14.14",
     "types-jsonschema>=4.26.0.20260109",
 ]
+
+# `reqif` (used by reqif_mcp.reqif_parser) ships no py.typed marker or stub
+# package, so mypy can only see it as untyped -- same reason
+# types-jsonschema exists above for jsonschema. lxml (a reqif transitive
+# dependency, imported directly for its exception types) does have a real
+# stub package; ignore_missing_imports here is only a fallback for
+# environments (e.g. an `ingest-lite`-only sync) that don't install it.
+[[tool.mypy.overrides]]
+module = ["reqif.*", "lxml.*"]
+ignore_missing_imports = true

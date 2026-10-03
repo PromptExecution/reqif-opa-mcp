@@ -6,6 +6,14 @@ Tests cover:
 - Rejecting malformed XML with clear errors
 - Handling invalid references in ReqIF (missing SpecType)
 - Handling empty ReqIF (no SpecObjects) without error
+
+Fixtures use the standard ReqIF 1.2 element structure (`<THE-HEADER>
+<REQ-IF-HEADER>`, `<CORE-CONTENT><REQ-IF-CONTENT>`) -- the same shape
+`tests/fixtures/sample_baseline.reqif` and any real tool export use. The
+previous hand-rolled parser's `.find(".//X")` XPath happened to match `X`
+at any depth, so these fixtures used to skip both wrapper elements without
+that being caught; `reqif_parser.py` now delegates to the StrictDoc
+`reqif` package, which -- correctly -- requires them.
 """
 
 from pathlib import Path
@@ -25,42 +33,55 @@ def test_parse_well_formed_reqif_xml() -> None:
 
     # Well-formed ReqIF XML with minimal structure
     well_formed_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<REQ-IF>
-  <REQ-IF-HEADER IDENTIFIER="header-001">
-    <TITLE>Test Baseline</TITLE>
-    <COMMENT>Test comment</COMMENT>
-  </REQ-IF-HEADER>
-  <REQ-IF-CONTENT>
-    <SPEC-TYPES>
-      <SPEC-OBJECT-TYPE IDENTIFIER="type-001" LONG-NAME="Requirement Type">
-        <SPEC-ATTRIBUTES>
-          <ATTRIBUTE-DEFINITION-STRING IDENTIFIER="attr-001" LONG-NAME="Key"/>
-          <ATTRIBUTE-DEFINITION-STRING IDENTIFIER="attr-002" LONG-NAME="Text"/>
-        </SPEC-ATTRIBUTES>
-      </SPEC-OBJECT-TYPE>
-    </SPEC-TYPES>
-    <SPEC-OBJECTS>
-      <SPEC-OBJECT IDENTIFIER="req-001">
-        <TYPE>
-          <SPEC-OBJECT-TYPE-REF>type-001</SPEC-OBJECT-TYPE-REF>
-        </TYPE>
-        <VALUES>
-          <ATTRIBUTE-VALUE-STRING>
-            <DEFINITION>
-              <ATTRIBUTE-DEFINITION-STRING-REF>attr-001</ATTRIBUTE-DEFINITION-STRING-REF>
-            </DEFINITION>
-            <THE-VALUE>REQ-001</THE-VALUE>
-          </ATTRIBUTE-VALUE-STRING>
-          <ATTRIBUTE-VALUE-STRING>
-            <DEFINITION>
-              <ATTRIBUTE-DEFINITION-STRING-REF>attr-002</ATTRIBUTE-DEFINITION-STRING-REF>
-            </DEFINITION>
-            <THE-VALUE>Test requirement text</THE-VALUE>
-          </ATTRIBUTE-VALUE-STRING>
-        </VALUES>
-      </SPEC-OBJECT>
-    </SPEC-OBJECTS>
-  </REQ-IF-CONTENT>
+<REQ-IF xmlns="http://www.omg.org/spec/ReqIF/20110401/reqif.xsd">
+  <THE-HEADER>
+    <REQ-IF-HEADER IDENTIFIER="header-001">
+      <TITLE>Test Baseline</TITLE>
+      <COMMENT>Test comment</COMMENT>
+    </REQ-IF-HEADER>
+  </THE-HEADER>
+  <CORE-CONTENT>
+    <REQ-IF-CONTENT>
+      <DATATYPES>
+      	<DATATYPE-DEFINITION-STRING IDENTIFIER="DATATYPE-STRING" LONG-NAME="String"/>
+      </DATATYPES>
+      <SPEC-TYPES>
+        <SPEC-OBJECT-TYPE IDENTIFIER="type-001" LONG-NAME="Requirement Type">
+          <SPEC-ATTRIBUTES>
+            <ATTRIBUTE-DEFINITION-STRING IDENTIFIER="attr-001" LONG-NAME="Key">
+            	<TYPE>
+            		<DATATYPE-DEFINITION-STRING-REF>DATATYPE-STRING</DATATYPE-DEFINITION-STRING-REF>
+            	</TYPE>
+            </ATTRIBUTE-DEFINITION-STRING>
+            <ATTRIBUTE-DEFINITION-STRING IDENTIFIER="attr-002" LONG-NAME="Text">
+            	<TYPE>
+            		<DATATYPE-DEFINITION-STRING-REF>DATATYPE-STRING</DATATYPE-DEFINITION-STRING-REF>
+            	</TYPE>
+            </ATTRIBUTE-DEFINITION-STRING>
+          </SPEC-ATTRIBUTES>
+        </SPEC-OBJECT-TYPE>
+      </SPEC-TYPES>
+      <SPEC-OBJECTS>
+        <SPEC-OBJECT IDENTIFIER="req-001">
+          <TYPE>
+            <SPEC-OBJECT-TYPE-REF>type-001</SPEC-OBJECT-TYPE-REF>
+          </TYPE>
+          <VALUES>
+            <ATTRIBUTE-VALUE-STRING THE-VALUE="REQ-001">
+            	<DEFINITION>
+            		<ATTRIBUTE-DEFINITION-STRING-REF>attr-001</ATTRIBUTE-DEFINITION-STRING-REF>
+            	</DEFINITION>
+            </ATTRIBUTE-VALUE-STRING>
+            <ATTRIBUTE-VALUE-STRING THE-VALUE="Test requirement text">
+            	<DEFINITION>
+            		<ATTRIBUTE-DEFINITION-STRING-REF>attr-002</ATTRIBUTE-DEFINITION-STRING-REF>
+            	</DEFINITION>
+            </ATTRIBUTE-VALUE-STRING>
+          </VALUES>
+        </SPEC-OBJECT>
+      </SPEC-OBJECTS>
+    </REQ-IF-CONTENT>
+  </CORE-CONTENT>
 </REQ-IF>
 """
 
@@ -112,10 +133,12 @@ def test_reject_malformed_xml() -> None:
 
     # Malformed XML: missing closing tag
     malformed_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<REQ-IF>
-  <REQ-IF-HEADER IDENTIFIER="header-001">
-    <TITLE>Test Baseline
-  </REQ-IF-HEADER>
+<REQ-IF xmlns="http://www.omg.org/spec/ReqIF/20110401/reqif.xsd">
+  <THE-HEADER>
+    <REQ-IF-HEADER IDENTIFIER="header-001">
+      <TITLE>Test Baseline
+    </REQ-IF-HEADER>
+  </THE-HEADER>
 </REQ-IF>
 """
 
@@ -138,9 +161,11 @@ def test_reject_invalid_root_element() -> None:
     # XML with wrong root element
     invalid_root_xml = """<?xml version="1.0" encoding="UTF-8"?>
 <INVALID-ROOT>
-  <REQ-IF-HEADER IDENTIFIER="header-001">
-    <TITLE>Test Baseline</TITLE>
-  </REQ-IF-HEADER>
+  <THE-HEADER>
+    <REQ-IF-HEADER IDENTIFIER="header-001">
+      <TITLE>Test Baseline</TITLE>
+    </REQ-IF-HEADER>
+  </THE-HEADER>
 </INVALID-ROOT>
 """
 
@@ -159,15 +184,19 @@ def test_reject_invalid_root_element() -> None:
 
 
 def test_reject_missing_header() -> None:
-    """Test rejection of ReqIF XML missing required REQ-IF-HEADER."""
+    """Test rejection of ReqIF XML missing required THE-HEADER/REQ-IF-HEADER."""
 
-    # ReqIF XML missing header
+    # ReqIF XML missing header (content is present and properly wrapped, so
+    # this exercises the header check specifically, not a content check
+    # that happens to fire first).
     missing_header_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<REQ-IF>
-  <REQ-IF-CONTENT>
-    <SPEC-OBJECTS>
-    </SPEC-OBJECTS>
-  </REQ-IF-CONTENT>
+<REQ-IF xmlns="http://www.omg.org/spec/ReqIF/20110401/reqif.xsd">
+  <CORE-CONTENT>
+    <REQ-IF-CONTENT>
+      <SPEC-OBJECTS>
+      </SPEC-OBJECTS>
+    </REQ-IF-CONTENT>
+  </CORE-CONTENT>
 </REQ-IF>
 """
 
@@ -185,14 +214,17 @@ def test_reject_missing_header() -> None:
 
 
 def test_reject_missing_content() -> None:
-    """Test rejection of ReqIF XML missing required REQ-IF-CONTENT."""
+    """Test rejection of ReqIF XML missing required CORE-CONTENT/REQ-IF-CONTENT."""
 
-    # ReqIF XML missing content
+    # ReqIF XML missing content (header is present and properly wrapped, so
+    # this exercises the content check specifically).
     missing_content_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<REQ-IF>
-  <REQ-IF-HEADER IDENTIFIER="header-001">
-    <TITLE>Test Baseline</TITLE>
-  </REQ-IF-HEADER>
+<REQ-IF xmlns="http://www.omg.org/spec/ReqIF/20110401/reqif.xsd">
+  <THE-HEADER>
+    <REQ-IF-HEADER IDENTIFIER="header-001">
+      <TITLE>Test Baseline</TITLE>
+    </REQ-IF-HEADER>
+  </THE-HEADER>
 </REQ-IF>
 """
 
@@ -214,20 +246,27 @@ def test_handle_empty_reqif_no_spec_objects() -> None:
 
     # ReqIF XML with no SpecObjects (valid but empty)
     empty_reqif_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<REQ-IF>
-  <REQ-IF-HEADER IDENTIFIER="header-001">
-    <TITLE>Empty Baseline</TITLE>
-  </REQ-IF-HEADER>
-  <REQ-IF-CONTENT>
-    <SPEC-TYPES>
-      <SPEC-OBJECT-TYPE IDENTIFIER="type-001" LONG-NAME="Requirement Type">
-        <SPEC-ATTRIBUTES>
-        </SPEC-ATTRIBUTES>
-      </SPEC-OBJECT-TYPE>
-    </SPEC-TYPES>
-    <SPEC-OBJECTS>
-    </SPEC-OBJECTS>
-  </REQ-IF-CONTENT>
+<REQ-IF xmlns="http://www.omg.org/spec/ReqIF/20110401/reqif.xsd">
+  <THE-HEADER>
+    <REQ-IF-HEADER IDENTIFIER="header-001">
+      <TITLE>Empty Baseline</TITLE>
+    </REQ-IF-HEADER>
+  </THE-HEADER>
+  <CORE-CONTENT>
+    <REQ-IF-CONTENT>
+      <DATATYPES>
+      	<DATATYPE-DEFINITION-STRING IDENTIFIER="DATATYPE-STRING" LONG-NAME="String"/>
+      </DATATYPES>
+      <SPEC-TYPES>
+        <SPEC-OBJECT-TYPE IDENTIFIER="type-001" LONG-NAME="Requirement Type">
+          <SPEC-ATTRIBUTES>
+          </SPEC-ATTRIBUTES>
+        </SPEC-OBJECT-TYPE>
+      </SPEC-TYPES>
+      <SPEC-OBJECTS>
+      </SPEC-OBJECTS>
+    </REQ-IF-CONTENT>
+  </CORE-CONTENT>
 </REQ-IF>
 """
 
@@ -251,27 +290,34 @@ def test_handle_invalid_spec_type_reference() -> None:
 
     # ReqIF XML with SpecObject referencing non-existent SpecType
     invalid_ref_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<REQ-IF>
-  <REQ-IF-HEADER IDENTIFIER="header-001">
-    <TITLE>Test Baseline</TITLE>
-  </REQ-IF-HEADER>
-  <REQ-IF-CONTENT>
-    <SPEC-TYPES>
-      <SPEC-OBJECT-TYPE IDENTIFIER="type-001" LONG-NAME="Requirement Type">
-        <SPEC-ATTRIBUTES>
-        </SPEC-ATTRIBUTES>
-      </SPEC-OBJECT-TYPE>
-    </SPEC-TYPES>
-    <SPEC-OBJECTS>
-      <SPEC-OBJECT IDENTIFIER="req-001">
-        <TYPE>
-          <SPEC-OBJECT-TYPE-REF>type-999-NONEXISTENT</SPEC-OBJECT-TYPE-REF>
-        </TYPE>
-        <VALUES>
-        </VALUES>
-      </SPEC-OBJECT>
-    </SPEC-OBJECTS>
-  </REQ-IF-CONTENT>
+<REQ-IF xmlns="http://www.omg.org/spec/ReqIF/20110401/reqif.xsd">
+  <THE-HEADER>
+    <REQ-IF-HEADER IDENTIFIER="header-001">
+      <TITLE>Test Baseline</TITLE>
+    </REQ-IF-HEADER>
+  </THE-HEADER>
+  <CORE-CONTENT>
+    <REQ-IF-CONTENT>
+      <DATATYPES>
+      	<DATATYPE-DEFINITION-STRING IDENTIFIER="DATATYPE-STRING" LONG-NAME="String"/>
+      </DATATYPES>
+      <SPEC-TYPES>
+        <SPEC-OBJECT-TYPE IDENTIFIER="type-001" LONG-NAME="Requirement Type">
+          <SPEC-ATTRIBUTES>
+          </SPEC-ATTRIBUTES>
+        </SPEC-OBJECT-TYPE>
+      </SPEC-TYPES>
+      <SPEC-OBJECTS>
+        <SPEC-OBJECT IDENTIFIER="req-001">
+          <TYPE>
+            <SPEC-OBJECT-TYPE-REF>type-999-NONEXISTENT</SPEC-OBJECT-TYPE-REF>
+          </TYPE>
+          <VALUES>
+          </VALUES>
+        </SPEC-OBJECT>
+      </SPEC-OBJECTS>
+    </REQ-IF-CONTENT>
+  </CORE-CONTENT>
 </REQ-IF>
 """
 
@@ -321,16 +367,23 @@ def test_handle_missing_optional_fields() -> None:
 
     # ReqIF XML with minimal required fields only (no COMMENT, etc.)
     minimal_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<REQ-IF>
-  <REQ-IF-HEADER IDENTIFIER="header-001">
-    <TITLE>Minimal Baseline</TITLE>
-  </REQ-IF-HEADER>
-  <REQ-IF-CONTENT>
-    <SPEC-TYPES>
-    </SPEC-TYPES>
-    <SPEC-OBJECTS>
-    </SPEC-OBJECTS>
-  </REQ-IF-CONTENT>
+<REQ-IF xmlns="http://www.omg.org/spec/ReqIF/20110401/reqif.xsd">
+  <THE-HEADER>
+    <REQ-IF-HEADER IDENTIFIER="header-001">
+      <TITLE>Minimal Baseline</TITLE>
+    </REQ-IF-HEADER>
+  </THE-HEADER>
+  <CORE-CONTENT>
+    <REQ-IF-CONTENT>
+      <DATATYPES>
+      	<DATATYPE-DEFINITION-STRING IDENTIFIER="DATATYPE-STRING" LONG-NAME="String"/>
+      </DATATYPES>
+      <SPEC-TYPES>
+      </SPEC-TYPES>
+      <SPEC-OBJECTS>
+      </SPEC-OBJECTS>
+    </REQ-IF-CONTENT>
+  </CORE-CONTENT>
 </REQ-IF>
 """
 
@@ -355,60 +408,68 @@ def test_handle_multiple_spec_objects() -> None:
 
     # ReqIF XML with 3 SpecObjects
     multi_spec_obj_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<REQ-IF>
-  <REQ-IF-HEADER IDENTIFIER="header-001">
-    <TITLE>Multi-Object Baseline</TITLE>
-  </REQ-IF-HEADER>
-  <REQ-IF-CONTENT>
-    <SPEC-TYPES>
-      <SPEC-OBJECT-TYPE IDENTIFIER="type-001" LONG-NAME="Requirement">
-        <SPEC-ATTRIBUTES>
-          <ATTRIBUTE-DEFINITION-STRING IDENTIFIER="attr-key" LONG-NAME="Key"/>
-        </SPEC-ATTRIBUTES>
-      </SPEC-OBJECT-TYPE>
-    </SPEC-TYPES>
-    <SPEC-OBJECTS>
-      <SPEC-OBJECT IDENTIFIER="req-001">
-        <TYPE>
-          <SPEC-OBJECT-TYPE-REF>type-001</SPEC-OBJECT-TYPE-REF>
-        </TYPE>
-        <VALUES>
-          <ATTRIBUTE-VALUE-STRING>
-            <DEFINITION>
-              <ATTRIBUTE-DEFINITION-STRING-REF>attr-key</ATTRIBUTE-DEFINITION-STRING-REF>
-            </DEFINITION>
-            <THE-VALUE>REQ-001</THE-VALUE>
-          </ATTRIBUTE-VALUE-STRING>
-        </VALUES>
-      </SPEC-OBJECT>
-      <SPEC-OBJECT IDENTIFIER="req-002">
-        <TYPE>
-          <SPEC-OBJECT-TYPE-REF>type-001</SPEC-OBJECT-TYPE-REF>
-        </TYPE>
-        <VALUES>
-          <ATTRIBUTE-VALUE-STRING>
-            <DEFINITION>
-              <ATTRIBUTE-DEFINITION-STRING-REF>attr-key</ATTRIBUTE-DEFINITION-STRING-REF>
-            </DEFINITION>
-            <THE-VALUE>REQ-002</THE-VALUE>
-          </ATTRIBUTE-VALUE-STRING>
-        </VALUES>
-      </SPEC-OBJECT>
-      <SPEC-OBJECT IDENTIFIER="req-003">
-        <TYPE>
-          <SPEC-OBJECT-TYPE-REF>type-001</SPEC-OBJECT-TYPE-REF>
-        </TYPE>
-        <VALUES>
-          <ATTRIBUTE-VALUE-STRING>
-            <DEFINITION>
-              <ATTRIBUTE-DEFINITION-STRING-REF>attr-key</ATTRIBUTE-DEFINITION-STRING-REF>
-            </DEFINITION>
-            <THE-VALUE>REQ-003</THE-VALUE>
-          </ATTRIBUTE-VALUE-STRING>
-        </VALUES>
-      </SPEC-OBJECT>
-    </SPEC-OBJECTS>
-  </REQ-IF-CONTENT>
+<REQ-IF xmlns="http://www.omg.org/spec/ReqIF/20110401/reqif.xsd">
+  <THE-HEADER>
+    <REQ-IF-HEADER IDENTIFIER="header-001">
+      <TITLE>Multi-Object Baseline</TITLE>
+    </REQ-IF-HEADER>
+  </THE-HEADER>
+  <CORE-CONTENT>
+    <REQ-IF-CONTENT>
+      <DATATYPES>
+      	<DATATYPE-DEFINITION-STRING IDENTIFIER="DATATYPE-STRING" LONG-NAME="String"/>
+      </DATATYPES>
+      <SPEC-TYPES>
+        <SPEC-OBJECT-TYPE IDENTIFIER="type-001" LONG-NAME="Requirement">
+          <SPEC-ATTRIBUTES>
+            <ATTRIBUTE-DEFINITION-STRING IDENTIFIER="attr-key" LONG-NAME="Key">
+            	<TYPE>
+            		<DATATYPE-DEFINITION-STRING-REF>DATATYPE-STRING</DATATYPE-DEFINITION-STRING-REF>
+            	</TYPE>
+            </ATTRIBUTE-DEFINITION-STRING>
+          </SPEC-ATTRIBUTES>
+        </SPEC-OBJECT-TYPE>
+      </SPEC-TYPES>
+      <SPEC-OBJECTS>
+        <SPEC-OBJECT IDENTIFIER="req-001">
+          <TYPE>
+            <SPEC-OBJECT-TYPE-REF>type-001</SPEC-OBJECT-TYPE-REF>
+          </TYPE>
+          <VALUES>
+            <ATTRIBUTE-VALUE-STRING THE-VALUE="REQ-001">
+            	<DEFINITION>
+            		<ATTRIBUTE-DEFINITION-STRING-REF>attr-key</ATTRIBUTE-DEFINITION-STRING-REF>
+            	</DEFINITION>
+            </ATTRIBUTE-VALUE-STRING>
+          </VALUES>
+        </SPEC-OBJECT>
+        <SPEC-OBJECT IDENTIFIER="req-002">
+          <TYPE>
+            <SPEC-OBJECT-TYPE-REF>type-001</SPEC-OBJECT-TYPE-REF>
+          </TYPE>
+          <VALUES>
+            <ATTRIBUTE-VALUE-STRING THE-VALUE="REQ-002">
+            	<DEFINITION>
+            		<ATTRIBUTE-DEFINITION-STRING-REF>attr-key</ATTRIBUTE-DEFINITION-STRING-REF>
+            	</DEFINITION>
+            </ATTRIBUTE-VALUE-STRING>
+          </VALUES>
+        </SPEC-OBJECT>
+        <SPEC-OBJECT IDENTIFIER="req-003">
+          <TYPE>
+            <SPEC-OBJECT-TYPE-REF>type-001</SPEC-OBJECT-TYPE-REF>
+          </TYPE>
+          <VALUES>
+            <ATTRIBUTE-VALUE-STRING THE-VALUE="REQ-003">
+            	<DEFINITION>
+            		<ATTRIBUTE-DEFINITION-STRING-REF>attr-key</ATTRIBUTE-DEFINITION-STRING-REF>
+            	</DEFINITION>
+            </ATTRIBUTE-VALUE-STRING>
+          </VALUES>
+        </SPEC-OBJECT>
+      </SPEC-OBJECTS>
+    </REQ-IF-CONTENT>
+  </CORE-CONTENT>
 </REQ-IF>
 """
 
