@@ -1,0 +1,17 @@
+[
+  {
+    "headers": ["Domain", "Objective ID", "Objective", "Practice ID", "Practice", "Context and Guidance", "Maturity Indicator Level", "Security Profile"],
+    "rows": [
+      ["ACCESS", "ACCESS-1", "Establish Identities and Manage Authentication", "ACCESS-1a", "Identities are provisioned.", "Provisioning must be tracked.\n\nRecords should be reviewed quarterly.", "MIL-1", "SP-1"],
+      ["ACCESS", "ACCESS-1", "Establish Identities and Manage Authentication", "ACCESS-1b", "Credentials are issued before access.", "", "MIL-1", "SP-1"]
+    ],
+    "context_cells": ["F2", "F2"]
+  },
+  {
+    "headers": ["Context and Guidance", "Practice ID", "Domain", "Practice", "Objective ID", "Context and Guidance", "Objective", "Maturity Indicator Level", "Security Profile"],
+    "rows": [
+      ["First context.", "ACCESS-1a", "ACCESS", "Identities are provisioned.", "ACCESS-1", "Second context.\n\nThird context.", "Establish Identities and Manage Authentication", "MIL-1", "SP-1"]
+    ],
+    "context_cells": ["A2", "F2", "F2"]
+  }
+]
