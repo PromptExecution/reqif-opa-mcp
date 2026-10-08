@@ -154,7 +154,7 @@ def _extract_or_generate_uid(identifier: str) -> str:
     Returns:
         UID string (stable identifier or deterministic UUID v5)
     """
-    # If identifier looks like a valid UID (alphanumeric with hyphens/underscores), use it
+    # Preserve Unicode alphanumeric ReqIF identifiers as stable source identities.
     if identifier and all(c.isalnum() or c in "_-" for c in identifier):
         return identifier
 
