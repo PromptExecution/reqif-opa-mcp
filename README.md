@@ -51,6 +51,21 @@ What is still future work:
 - richer PDF structure extraction with pre-seeded offline Docling models
 - externalized profile/config mapping instead of code-first profile logic
 
+## Strict source preflight
+
+`reqif_mcp.source_validation.validate_reqif_source(bytes)` returns a typed
+`Success[ValidatedReqIFSource]` or `Failure[ReqIFSourceValidationError]`. It checks
+ReqIF XML against digest-pinned schema resources from `reqif==0.0.48` using
+`xmlschema==4.3.1`, with external entities, document schema hints and network
+loading disabled. Original bytes, source/schema digests and validator version
+remain available on success. Input is limited to 16 MiB, 100,000 elements and
+128 levels; diagnostics are bounded to 64 issues.
+
+This preflight is the first source-codec gate. A schema-valid document still
+requires category-aware reference validation, an explicit mapping profile,
+parser fidelity checks and edited-export equivalence before model publication.
+It does not change the existing compliance parser or assert semantic round trip.
+
 ## Architecture
 
 The system has two deliberate pipelines:

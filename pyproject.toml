@@ -8,7 +8,8 @@ dependencies = [
     "python-ulid>=3.1.0",
     "returns>=0.26.0",
     "fastmcp==3.0.0b1",
-    "reqif>=0.0.48",
+    "reqif==0.0.48",
+    "xmlschema==4.3.1",
 ]
 
 [project.optional-dependencies]
@@ -46,3 +47,14 @@ dev = [
 [[tool.mypy.overrides]]
 module = ["reqif.*", "lxml.*"]
 ignore_missing_imports = true
+
+# Package only executable Python surfaces, including pinned source-validation data.
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.package-data]
+reqif_mcp = ["source_schema_manifest.json"]
+
+[tool.setuptools.packages.find]
+include = ["reqif_mcp*", "reqif_ingest_cli*", "agents*"]
+namespaces = false
