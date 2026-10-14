@@ -8,6 +8,9 @@ Tests cover:
 - UUID v5-based UID generation for invalid identifiers
 """
 
+import json
+from pathlib import Path
+
 from reqif_mcp.normalization import _extract_or_generate_uid
 
 
@@ -112,24 +115,17 @@ def test_empty_identifier_handling() -> None:
 
 
 def test_unicode_identifier_handling() -> None:
-    """Test handling of Unicode characters in identifiers."""
-    
-    unicode_identifiers = [
-        "REQ-日本語",
-        "REQ-العربية",
-        "REQ-中文",
-        "Requirement™️",
-    ]
-    
-    for identifier in unicode_identifiers:
+    """Preserve valid source IDs and pin deterministic keys for non-ID characters."""
+    cases = json.loads((Path(__file__).parent / "fixtures/unicode_identifiers.json").read_text())
+    for case in cases:
+        identifier = case["identifier"]
         uid1 = _extract_or_generate_uid(identifier)
         uid2 = _extract_or_generate_uid(identifier)
         
         # Should be deterministic for Unicode
         assert uid1 == uid2, f"Unicode identifier not deterministic: '{identifier}'"
         
-        # Should produce valid UUID format
-        assert len(uid1) == 36, f"Unicode identifier produced invalid UID: {uid1}"
+        assert uid1 == case["uid"]
 
 
 def test_case_sensitivity() -> None:

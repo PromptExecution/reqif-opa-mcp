@@ -209,6 +209,18 @@ def _extract_aescsf_core(workbook: Workbook, artifact: Any) -> DocumentGraph:
             for index, value in enumerate(row)
             if semantic_headers.get(index + 1)
         }
+        # Preserve physical columns, including repeated semantic headers, for source anchors.
+        paragraph_values: dict[str, Any] = {}
+        for column_index, value in enumerate(row, start=1):
+            header = semantic_headers.get(column_index)
+            if not header:
+                continue
+            if header in {"practice_id", "requirement_id", "objective_id"}:
+                paragraph_values[header] = normalize_text(value)
+            else:
+                paragraph_values.setdefault(header, []).append(
+                    (column_index, normalize_text(value))
+                )
         practice_id = row_values.get("practice_id", "")
         practice = row_values.get("practice", "")
         if not practice_id or not practice:
@@ -243,7 +255,7 @@ def _extract_aescsf_core(workbook: Workbook, artifact: Any) -> DocumentGraph:
                 artifact_id=artifact.artifact_id,
                 worksheet=worksheet.title,
                 row_index=row_index,
-                row_values=row_values,
+                row_values=paragraph_values,
                 row_id=row_id,
             )
         )

@@ -1,0 +1,7 @@
+[
+  {"value": "", "message": "Empty value"},
+  {"value": " \t", "message": "Empty value"},
+  {"value": 7, "message": "must be a string"},
+  {"value": false, "message": "must be a string"},
+  {"value": null, "message": "must be a string"}
+]

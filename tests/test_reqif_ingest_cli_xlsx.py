@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from typing import Any
+
+import pytest
 
 from openpyxl import Workbook
 from returns.result import Success
@@ -74,48 +78,37 @@ def test_distill_aescsf_toolkit_candidates(tmp_path: Path) -> None:
     ]
 
 
-def _write_core_workbook(path: Path) -> None:
-    """Create a small AESCSF core fixture workbook."""
+def _write_core_workbook(path: Path, case: dict[str, Any] | None = None) -> None:
+    """Create an XLSX fixture from the recorded source data."""
+    if case is None:
+        case = _anchor_cases()[0]
     workbook = Workbook()
     worksheet = workbook.active
     worksheet.title = "AESCSF Core"
-    worksheet.append(
-        [
-            "Domain",
-            "Objective ID",
-            "Objective",
-            "Practice ID",
-            "Practice",
-            "Context and Guidance",
-            "Maturity Indicator Level",
-            "Security Profile",
-        ]
-    )
-    worksheet.append(
-        [
-            "ACCESS",
-            "ACCESS-1",
-            "Establish Identities and Manage Authentication",
-            "ACCESS-1a",
-            "Identities are provisioned.",
-            "Provisioning must be tracked.\n\nRecords should be reviewed quarterly.",
-            "MIL-1",
-            "SP-1",
-        ]
-    )
-    worksheet.append(
-        [
-            "ACCESS",
-            "ACCESS-1",
-            "Establish Identities and Manage Authentication",
-            "ACCESS-1b",
-            "Credentials are issued before access.",
-            "",
-            "MIL-1",
-            "SP-1",
-        ]
-    )
+    worksheet.append(case["headers"])
+    for row in case["rows"]:
+        worksheet.append(row)
     workbook.save(path)
+
+
+def _anchor_cases() -> list[dict[str, Any]]:
+    """Load source columns independently of the extractor implementation."""
+    return json.loads((Path(__file__).parent / "fixtures/xlsx_anchor_cases.json").read_text())
+
+
+@pytest.mark.parametrize("case", _anchor_cases())
+def test_physical_columns_survive_reordering_and_repeated_headers(
+    tmp_path: Path, case: dict[str, Any]
+) -> None:
+    """Every context paragraph resolves to its actual worksheet cell."""
+    path = tmp_path / "anchors.xlsx"
+    _write_core_workbook(path, case)
+    graph = extract_xlsx_document(path, profile="aescsf_core_v2").unwrap()
+    paragraphs = [
+        node for node in graph.nodes
+        if node.node_type == "paragraph" and node.attributes.get("role") == "context_guidance"
+    ]
+    assert [node.anchors[0].cell for node in paragraphs] == case["context_cells"]
 
 
 def _write_toolkit_workbook(path: Path) -> None:
